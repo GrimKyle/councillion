@@ -56,7 +56,7 @@
 .arcade-scene.is-gold .gold-sparkles i { animation:burrow-gold-spark 1.4s ease-out var(--spark-delay) infinite; }
 .burrow-impact { position:absolute; left:50%; top:48%; width:10px; height:10px; border:4px solid #ffe79a; opacity:0; transform:translate(-50%,-50%); z-index:5; pointer-events:none; }
 .gold-burst .burrow-impact { animation:burrow-shockwave 1.1s ease-out forwards; }
-.burrow-rails { position:absolute; inset:0; z-index:5; opacity:.36; }
+.burrow-rails { position:absolute; inset:0; z-index:5; opacity:0; visibility:hidden; }
 .burrow-rank-rail { position:absolute; left:16%; right:15%; top:var(--rail-y); display:flex; gap:9px; align-items:center; color:var(--rank-color); transform:translateY(30px); opacity:0; }
 .is-descending .burrow-rank-rail,.is-settled .burrow-rank-rail { opacity:.3; transform:translateY(0); transition:opacity .22s,transform .4s; }
 .rail-rule { height:1px; flex:1; border-top:1px dashed currentColor; }
@@ -66,7 +66,7 @@
 .burrow-rank-rail.is-passed { opacity:1; filter:drop-shadow(0 0 7px var(--rank-color)); }
 .burrow-rank-rail.is-passed .rail-rule { border-top-style:solid; height:2px; box-shadow:0 0 11px var(--rank-color); }
 .burrow-rank-rail.is-winning { opacity:1; transform:scale(1.015); filter:drop-shadow(0 0 9px var(--rank-color)); }
-.burrow-depth-haze~.burrow-rails:has(.is-passed) { opacity:1; }
+
 .burrow-side-scale { position:absolute; top:7%; bottom:8%; right:0; width:62px; display:flex; flex-direction:column; justify-content:space-between; border-right:1px solid #acb7d62e; z-index:7; font:9px monospace; color:#c3c5dc88; }
 .burrow-side-scale span { display:block; text-align:right; padding-right:9px; position:relative; }
 .burrow-side-scale span::after { content:""; position:absolute; right:0; top:4px; height:1px; width:6px; background:#c3c5dc55; }
@@ -191,7 +191,7 @@
 .arcade-avatar:focus-visible { outline:2px solid #ffe486; outline-offset:9px; }
 .arcade-avatar>* { pointer-events:none; }
 .burrow-tunnel { height:max(0px,calc(var(--camera-y) + var(--avatar-px) - var(--surface-y) + 25px)); background:repeating-linear-gradient(0deg,#080b12b8 0 58px,#080b128f 58px 65px); border-left-color:#b68b5526; border-right-color:#b68b5526; }
-.burrow-rails { opacity:1; }
+
 .burrow-rank-rail { left:58%; right:5%; transform:none; opacity:.4; }
 .is-descending .burrow-rank-rail,.is-settled .burrow-rank-rail { transform:none; transition:opacity .16s,filter .16s; }
 .burrow-rank-rail.is-winning { transform:none; }
@@ -215,3 +215,156 @@
 @keyframes gobble-hop { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-17px) rotate(7deg); } }
 @media(max-width:700px) { .burrow-rank-rail { left:62%; right:3%; gap:4px; }.rail-label { white-space:normal; font-size:7px;letter-spacing:0;max-width:100px; }.rail-label b{margin-left:3px;}.rail-symbol{font-size:9px;}.rail-rule{min-width:4px;}.burrow-side-scale{display:none;} }
 @media(prefers-reduced-motion:reduce) { .is-descending .dig-face,.is-missed .turkey-motion,.is-gobbling .turkey-motion { animation:none; } }
+
+/* The ruler is revealed only after a locked answer; it never moves with terrain. */
+.arcade-scene .burrow-rails,.arcade-scene .burrow-side-scale { opacity:0; visibility:hidden; }
+.arcade-scene.is-descending .burrow-rails,.arcade-scene.is-descending .burrow-side-scale { visibility:visible; animation:rank-ruler-in .4s ease-out both; }
+.arcade-scene.is-settled .burrow-rails { visibility:visible; opacity:1; }
+.arcade-scene.is-settled .burrow-side-scale { visibility:visible; opacity:.55; }
+.burrow-reveal { animation:burrow-result-in .32s ease-out both; }
+.burrow-reveal.is-pending .eyebrow { color:#c4c0d5; font-size:14px; text-shadow:none; }
+.burrow-reveal.is-pending h1 { color:#e5dfed; font-size:20px; }
+.arcade-scene.is-departing .arcade-avatar,.arcade-scene.is-departing .burrow-rails { opacity:0; transition:opacity .2s ease-in; }
+.arcade-scene.is-departing~.burrow-reveal { animation:none; opacity:0; transition:opacity .2s ease-in; }
+.arcade-scene.is-arriving .arcade-avatar { animation:rank-ruler-in .25s ease-out both; }
+@keyframes rank-ruler-in { from { opacity:0; } to { opacity:1; } }
+@keyframes burrow-result-in { from { opacity:0; } to { opacity:1; } }
+@media(prefers-reduced-motion:reduce) {
+ .arcade-scene.is-descending .burrow-rails,.arcade-scene.is-descending .burrow-side-scale,.burrow-reveal,.arcade-scene.is-arriving .arcade-avatar { animation:none; }
+ .arcade-scene.is-descending .burrow-rails,.arcade-scene.is-descending .burrow-side-scale { opacity:1; }
+ .arcade-scene.is-departing .arcade-avatar,.arcade-scene.is-departing .burrow-rails,.arcade-scene.is-departing~.burrow-reveal { transition:none; }
+}
+
+/* Fullscreen game follows the visible viewport, including the iOS keyboard. */
+html.game-open,html.game-open body { overflow:hidden; overscroll-behavior:none; }
+.playing-arcade { position:fixed; left:0; right:0; top:var(--game-viewport-top,0px); height:var(--game-viewport-height,100svh); min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+.playing-arcade main.container { flex:1 1 auto; min-height:0; padding:0; margin:0; position:relative; }
+.playing-arcade .arcade-shell { height:100%; min-height:0; max-height:none; margin:0; }
+.playing-arcade .game-topbar { flex:0 0 auto; min-height:56px; width:100%; display:flex; flex-wrap:nowrap; justify-content:space-between; padding:max(6px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 6px max(14px,env(safe-area-inset-left)); }
+.game-topbar .brand { min-height:44px; min-width:0; gap:9px; font-size:15px; }
+.game-topbar .header-actions { gap:6px; margin-left:auto; flex-shrink:0; }
+.game-topbar .sound-toggle,.game-menu>summary { width:44px; height:44px; min-width:44px; display:grid; place-items:center; touch-action:manipulation; }
+.game-menu { position:relative; }
+.game-menu>summary { cursor:pointer; list-style:none; font-size:24px; color:#e2d6ed; border:1px solid #77658677; background:#171426; }
+.game-menu>summary::-webkit-details-marker { display:none; }
+.game-menu-panel { position:absolute; right:0; top:calc(100% + 8px); width:min(260px,calc(100vw - 30px)); display:grid; padding:8px; background:#171426; border:1px solid #8d799e; box-shadow:0 12px 30px #0009; z-index:100; }
+.game-menu-panel button { color:#f1e6f5; text-align:left; padding:12px; min-height:46px; border:0; background:transparent; font:inherit; font-size:14px; overflow-wrap:anywhere; touch-action:manipulation; }
+.game-menu-panel button:hover,.game-menu-panel button:focus-visible { background:#3b2d4c; }
+.game-topbar { transition:opacity .22s ease; z-index:50; }
+.motion-running .game-topbar,.is-clearing-ui .game-topbar { opacity:0; pointer-events:none; }
+.question-ui,.result-ui { position:absolute; inset:0; pointer-events:none; z-index:9; }
+.question-ui .burrow-prompt,.question-ui .burrow-controls,.result-ui .burrow-reveal,.result-ui .burrow-controls { pointer-events:auto; }
+.is-in-flight .burrow-hud-center { opacity:0; visibility:hidden; }
+.is-in-flight .burrow-hud { pointer-events:none; }
+.is-in-flight .burrow-coordinates { visibility:hidden; }
+.arcade-scene.is-clearing~.question-ui { animation:none;opacity:0; transform:translateY(-12px); transition:opacity .22s ease,transform .22s ease; }
+.is-clearing-ui .burrow-hud-center { opacity:0; transition:opacity .22s ease; }
+.arcade-scene.is-departing~.result-ui { animation:none;opacity:0; transform:translateY(-12px); transition:opacity .22s ease,transform .22s ease; }
+.is-answering .question-ui { animation:question-enter .32s ease-out both; }
+.is-result .result-ui { animation:result-enter .38s ease-out both; }
+
+.arcade-scene.is-descending .turkey-leg-left,.arcade-scene.is-descending .turkey-leg-right { transform-box:fill-box; transform-origin:50% 0; animation:turkey-step .24s ease-in-out infinite alternate; }
+.arcade-scene.is-descending .turkey-leg-right { animation-delay:-.24s; }
+.burrow-input-row .button,.answer-suggestion .button,.reveal-controls .button { touch-action:manipulation; }
+@keyframes question-enter { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes result-enter { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+@keyframes turkey-step { from { transform:rotate(-19deg) translateY(-1px); } to { transform:rotate(19deg) translateY(2px); } }
+@media(max-width:700px) {
+ .playing-arcade .game-topbar { gap:8px; }
+ .game-topbar .brand { font-size:13px;letter-spacing:1px; }
+ .game-topbar .brand-icon { width:26px;height:26px; }
+ .burrow-hud { top:12px; left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));gap:8px; }
+ .burrow-meter { min-width:66px; padding:8px 9px; }
+ .burrow-meter>strong { font-size:19px; }
+ .burrow-meter>strong small { font-size:11px; }
+ .burrow-meter>span { font-size:8px;letter-spacing:1.5px; }
+ .burrow-hud-center { max-width:48%; }
+ .burrow-hud-center>span { font-size:9px;letter-spacing:.6px;line-height:1.4;max-height:26px;overflow:hidden; }
+ .burrow-hud-center>small { font-size:6px;letter-spacing:.25px; }
+ .burrow-progress { gap:4px; }
+ .burrow-progress span { width:12px; height:12px; line-height:10px; font-size:8px; }
+ .question-ui { inset:92px max(12px,env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); display:flex;flex-direction:column;gap:12px;min-height:0; }
+ .question-ui .burrow-prompt { position:relative;top:auto;left:auto;transform:none;width:100%;max-height:42%;min-height:0;flex:0 1 auto;margin:0;padding:14px 15px;overflow:auto;overscroll-behavior:contain; }
+ .burrow-prompt .eyebrow { font-size:9px;margin:0 0 7px; }
+ .burrow-prompt h1 { font-size:clamp(17px,4.8vw,21px);line-height:1.4; }
+ .burrow-prompt>p:last-child { font-size:8px;line-height:1.5;margin-top:8px; }
+ .question-ui .burrow-controls { position:relative;bottom:auto;left:auto;transform:none;width:100%;margin-top:auto;flex:0 0 auto; }
+ .burrow-controls .burrow-input-row { display:grid;grid-template-columns:32px minmax(0,1fr) 82px;gap:8px;align-items:center; }
+ .burrow-controls .answer-input { width:100%;min-width:0;min-height:50px;font-size:16px;padding:12px 10px;scroll-margin:15px; }
+ .burrow-controls .button { min-height:50px;min-width:0;padding:11px 9px;font-size:10px;letter-spacing:.8px; }
+ .burrow-controls .timer { width:30px;min-width:30px;height:42px;box-shadow:none;font-size:16px; }
+ .burrow-feedback { font-size:11px;line-height:1.45;max-height:50px;overflow:auto;overflow-wrap:anywhere;padding:5px 0;margin-bottom:8px; }
+ .answer-rejected .burrow-feedback { padding:6px 8px; }
+ .answer-suggestion { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 10px; }
+ .answer-suggestion .button { min-height:44px;letter-spacing:.5px;font-size:10px; }
+ .burrow-controls .timer-track { margin-top:8px; }
+ .question-ui .burrow-controls>p { font-size:8px;line-height:1.5;margin:10px 0 0; }
+ .result-ui .burrow-reveal { top:14%;width:calc(100% - 32px);max-height:35%;overflow:auto;overscroll-behavior:contain;padding:2px; }
+ .burrow-reveal .eyebrow { font-size:clamp(17px,5vw,22px);line-height:1.4;letter-spacing:1px; }
+ .burrow-reveal h1 { font-size:20px;line-height:1.35;margin-bottom:10px; }
+ .burrow-reveal .burrow-explanation { max-height:none;line-height:1.6;font-size:12px; }
+ .result-ui .reveal-controls { bottom:calc(14px + env(safe-area-inset-bottom));width:calc(100% - 32px); }
+ .reveal-controls .button { width:100%;min-width:0;min-height:52px;font-size:12px; }
+ .reveal-controls>p { font-size:9px;line-height:1.5;margin-top:10px; }
+ .arcade-avatar,.arcade-avatar .turkey-svg { width:78px;height:78px; }
+ .burrow-tunnel { left:calc(50% - 54px);width:108px; }
+ .dig-face { left:-13px;right:-13px;bottom:-20px;height:38px;border-bottom-width:6px; }
+ .burrow-rank-rail { left:63%;right:3%;gap:4px; }
+ .rail-label { font-size:8px;letter-spacing:0;max-width:104px;line-height:1.25; }
+ .rail-rule { min-width:6px; }
+ .burrow-caption,.burrow-coordinates { display:none; }
+ .burrow-world { will-change:transform; }
+ .burrow-vignette { box-shadow:inset 0 0 65px 15px #09091455; }
+ .burrow-crystal:nth-of-type(2n),.far-forest { display:none; }
+ .keyboard-open .question-ui { top:64px;bottom:8px;gap:8px; }
+ .keyboard-open .question-ui .burrow-prompt { max-height:45%;padding:9px 12px; }
+ .keyboard-open .burrow-prompt h1 { font-size:16px;line-height:1.35; }
+ .keyboard-open .burrow-prompt>p:last-child,.keyboard-open .question-ui .burrow-controls>p,.keyboard-open .burrow-hud-center>small { display:none; }
+ .keyboard-open .burrow-meter { padding:5px 8px; }
+ .keyboard-open .burrow-meter>strong { font-size:17px; }
+ .keyboard-open .arcade-scene.is-question .arcade-avatar { visibility:hidden; }
+ .keyboard-open .burrow-feedback { margin-bottom:5px;max-height:34px; }
+ .keyboard-open .answer-suggestion { margin-bottom:7px; }
+ input.input,textarea.textarea,select.select { font-size:16px; }
+ .dialog { width:calc(100% - 24px);max-height:calc(var(--game-viewport-height,100svh) - 24px);padding-bottom:env(safe-area-inset-bottom); }
+ .button,.nav-btn { touch-action:manipulation; }
+}
+@media(max-height:520px) and (orientation:landscape) {
+ .playing-arcade .game-topbar { min-height:44px;padding-top:0;padding-bottom:0; }
+ .question-ui { inset:64px max(18px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));display:flex;flex-direction:row;gap:20px;align-items:flex-end; }
+ .question-ui .burrow-prompt { position:relative;top:auto;left:auto;transform:none;width:45%;max-height:100%;overflow:auto;padding:12px; }
+ .question-ui .burrow-controls { position:relative;bottom:auto;left:auto;transform:none;width:55%;margin:0; }
+ .burrow-prompt h1 { font-size:16px; }
+ .burrow-prompt>p:last-child,.question-ui .burrow-controls>p { display:none; }
+ .result-ui .burrow-reveal { top:22%;left:27%;width:45%;max-height:65%;overflow:auto; }
+ .result-ui .reveal-controls { left:auto;right:max(16px,env(safe-area-inset-right));transform:none;bottom:14px;width:40%; }
+ .reveal-controls .button { width:100%;min-width:0; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .question-ui,.result-ui,.game-topbar,.is-answering .question-ui,.is-result .result-ui { animation:none;transition:none; }
+ .arcade-scene.is-clearing~.question-ui,.arcade-scene.is-departing~.result-ui { transition:none;transform:none; }
+ .arcade-scene.is-descending .turkey-leg-left,.arcade-scene.is-descending .turkey-leg-right { animation:none; }
+}
+
+@media(max-width:700px) {
+ .keyboard-open .game-topbar { min-height:44px;padding-top:0;padding-bottom:0; }
+ .keyboard-open .question-ui { overflow-y:auto;overscroll-behavior:contain; }
+ .keyboard-open .question-ui .burrow-prompt { flex-shrink:0;min-height:50px;max-height:110px; }
+}
+
+.game-menu:not([open]) .game-menu-panel { display:none; }
+@media(max-height:520px) and (orientation:landscape) {
+ .question-ui { overflow:auto;overscroll-behavior:contain; }
+ .question-ui .burrow-controls { max-height:100%;overflow:auto;padding:3px 4px 7px; }
+}
+
+/* Override the shared #main padding in fullscreen play. */
+.playing-arcade main#main.container { padding:0; }
+.import-status:not(:empty) { padding:10px 12px;border:1px solid #7f6a94;background:#1c1727;font-size:13px;line-height:1.5; }
+.import-status.is-error { border-color:#e89b8f;color:#ffc5b5; }
+.bulk-chat-help { margin-top:18px;font-size:13px;line-height:1.6; }
+.bulk-chat-help summary { cursor:pointer;min-height:44px;display:flex;align-items:center;color:#cdb4e6; }
+.bulk-chat-help p { margin-top:8px; }
+
+.dialog-backdrop { top:var(--game-viewport-top,0px);bottom:auto;height:var(--game-viewport-height,100svh);padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));overflow:auto; }
+.dialog-backdrop .dialog { max-height:calc(var(--game-viewport-height,100svh) - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain; }

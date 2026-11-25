@@ -2,7 +2,7 @@
 
 ## Passed in the build workspace
 
-- `npm test`: **75 passing checks** across the backend/local API, matching, first-score/replay isolation, pack management, bulk parser, animation engine and frontend event/render flow.
+- `npm test`: **92 passing checks** across the backend/local API, matching, first-score/replay isolation, pack management, bulk parser, animation engine and frontend event/render flow.
 - Pack management: private draft/import, exactly-seven publication checks, publish/hide, active/API play blocked while private/deleted, republish preserves the timer, deleted entries cannot be revived by save, past results and leaderboard history retained, and UI delete confirmation/cancellation.
 - Unlimited replays: first-run gate, distinct replays, first-score preservation across higher/lower results, no inflated participation/games/achievements/popularity, idempotent replay requests, rejected cross-user/request-ID access, timer/resume behavior, legacy local compatibility, per-pack official slots, and replay/first-result UI switching.
 - Invalid retry: invalid guesses keep the same question and deadline; blank submissions explicitly skip with zero; invalid request retries are idempotent; fresh guesses remain usable; valid or confirmed answers, blank skips and timeouts advance. Invalid raw guesses are recorded without a review requirement.
@@ -15,9 +15,11 @@
 - Remote client: anonymous signup followed by authenticated RPC; public connection credentials accepted and privileged keys rejected.
 - UI flow: empty home, Game Master editor, username gate, all seven answer transitions, own-answer reveal with complete banks hidden until completion, expanded results markup, leaderboard, settings, unrecognized/all history filtering, and HTML escaping of pack text.
 - `node --check` for the delivered browser scripts.
+- Hidden-reveal checks: rank ruler hidden during questions and suggestions; no winning highlight or new gold before landing; short lead-in before smooth avatar movement; the UI removes the prompt, form, result card and next button, and withholds the rank, award, progress color and explanation during an in-flight descent; next question fades its previous position and restores hidden ranks.
+- Mobile flow checks: visual viewport height/offset updates, keyboard-state changes, preserved input DOM while a typo proposal is updated, prompt-clearing pause and keyboard settling, bird/tunnel geometry on resize, two non-overlapping quiet gobble clusters, no speech calls, rapid-tap suppression, mute behavior and suspended-audio resume.
 - Arcade engine VM checks: six rails, camera interpolation, golden transformation, rank crossing, visible avatar travel, extending tunnel variables, persistent gold, reduced-motion final state, gobble feedback, blank reaction pause and safe animation cancellation.
-- Bulk parser: 17 checks for CSV/TSV/JSON, quoted/multiline fields, question count/ranks, alias conflicts, fresh private drafts, answer-list merging, input limits and inert text.
-- Frontend integration: quoted invalid guess retry, typo confirmation, blank reaction, interrupted-run resume, clickable gobble, all seven transitions, gold persistence into the next question, archive search/filter without rerender, emoji marks, replay isolation, bulk editor autofill and pack visibility controls.
+- Bulk parser: 26 checks for readable text, numbered prompt drafts, Markdown/fences, CSV/TSV/JSON, quoted/multiline fields, question count/ranks, alias conflicts, fresh private drafts, answer-list merging, input limits and inert text.
+- Frontend integration: quoted invalid guess retry, typo confirmation, blank reaction, interrupted-run resume, clickable gobble, all seven transitions, gold persistence into the next question, archive search/filter without rerender, emoji marks, replay isolation, bulk editor autofill, readable-pack private draft/save flow, import-error text preservation and pack visibility controls.
 - `python3 build.py`: produces a static `dist/` site and a standalone `Councillion.html`.
 - Parsed the bundled HTML: stylesheet and scripts are embedded, no external runtime assets remain, all embedded JavaScript passes Node syntax checks.
 - Backend SQL static review: named RPCs and explicit grants, restricted private schema, RLS enabled, server-held deadlines, locked attempts, complete-only results. This is inspection, not a database execution result.
@@ -29,6 +31,6 @@ The UI VM checks exercise JavaScript behavior and generated markup. They do **no
 - Applying the SQL migration to an actual Supabase project and running `tests/backend-contract.sql`, `tests/typo-matching.sql` and `tests/answer-feedback.sql` there. PostgreSQL is not installed in this workspace.
 - Live Supabase Auth, RLS and API behavior, actual concurrent requests, and two-device shared leaderboards.
 - GitHub Pages deployment and public URL, because deployment integrations are administratively unavailable here.
-- Visual desktop/mobile browser inspection. Chromium could not launch under this workspace’s browser restrictions, on the preceding build; this update was checked with the UI/animation VM harness. The sounds have not been listened to here. UI VM and animation tests are not a substitute for visual/audio browser verification.
+- Visual desktop/mobile browser inspection and physical iPhone Safari testing. A fresh Playwright attempt on this build could not launch Chromium because its executable is missing; no browser rendering check ran. This update was checked with the UI/animation VM harness. The sounds have not been listened to here. UI VM and animation tests are not a substitute for visual/audio browser verification.
 
 Do not treat the generated backend, deployment workflow, or responsive CSS as evidence those live checks already passed. Follow README.md for setup and perform the two-browser event rehearsal before using shared scores at the get-together.

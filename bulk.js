@@ -7,7 +7,7 @@
   const uuid = () => root.crypto?.randomUUID?.() || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const n = Math.random() * 16 | 0; return (c === 'x' ? n : (n & 3 | 8)).toString(16); });
   const normalize = value => String(value ?? '').normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
   function inputText(value) {
-    if (typeof value !== 'string') throw new Error('Paste text or choose a CSV, TSV, or JSON file.');
+    if (typeof value !== 'string') throw new Error('Paste text or choose a TXT, CSV, TSV, or JSON file.');
     const bytes = typeof TextEncoder !== 'undefined' ? new TextEncoder().encode(value).length : value.length;
     if (bytes > LIMIT) throw new Error('Import files must be 1 MB or smaller.');
     if (value.includes('\0')) throw new Error('This file contains a null character. Export it as UTF-8 text first.');
@@ -22,12 +22,12 @@
   }
   function tier(value, fallback) {
     const raw = value == null || String(value).trim() === '' ? fallback : String(value);
-    const result = TIERS[normalize(raw)];
+    const key = normalize(raw), result = Object.prototype.hasOwnProperty.call(TIERS, key) ? TIERS[key] : null;
     if (!result) throw new Error('Unknown rank “' + String(raw ?? '') + '”. Use a Council rank or 10, 15, 30, 60, 85, 100.');
     return result;
   }
   // Strict RFC-style quoted fields; delimiter can also be a tab or vertical bar.
-  function rows(source, delimiter) {
+  function rows(source, delimiter, spaced = false) {
     const result = [];
     let row = [], cell = '', quoted = false, endedQuote = false, atStart = true;
     function field() { row.push(cell); cell = ''; endedQuote = false; atStart = true; }
@@ -39,6 +39,7 @@
         else cell += c;
         continue;
       }
+      if (spaced && atStart && (c === ' ' || c === '\t')) continue;
       if (c === delimiter) { field(); continue; }
       if (c === '\r' || c === '\n') { if (c === '\r' && source[i + 1] === '\n') i++; line(); continue; }
       if (endedQuote) { if (c === ' ' || (c === '\t' && delimiter !== '\t')) continue; throw new Error('Unexpected text after a closing quote near row ' + (result.length + 1) + '.'); }
@@ -104,11 +105,55 @@
       })
     };
   }
+  function unwrapFence(source) {
+    if (!source.startsWith('```')) return source;
+    const lines = source.split(/\r?\n/);
+    if (!/^```(?:text|txt|councillion|json|csv|tsv)?\s*$/i.test(lines[0]) || lines.at(-1).trim() !== '```') {
+      throw new Error('Copy one complete fenced text block, including its closing ``` line, or paste the content without the fences.');
+    }
+    return lines.slice(1, -1).join('\n').trim();
+  }
+  // Question headers are explicit; a bulleted numeric answer remains an answer.
+  const questionHeader = /^(?:Q(?:uestion)?\s*(\d+)\s*[:.)-]\s*|(\d+)[.)](?:\s+|$))(.*)$/i;
+  const blockLine = value => value.trim().replace(/^#{1,6}\s+/, '');
+  function parseTextPack(source, options) {
+    const questions = [], metadata = {}, seen = new Set();
+    let current = null, answerCount = 0;
+    source.split(/\r?\n/).forEach((rawLine, index) => {
+      const lineNumber = index + 1, line = blockLine(rawLine);
+      if (!line) return;
+      const header = questionHeader.exec(line);
+      if (header) {
+        const number = Number(header[1] || header[2]);
+        if (number < 1 || number > 7) throw new Error('Line ' + lineNumber + ': question number must be from 1 to 7.');
+        if (seen.has(number)) throw new Error('Line ' + lineNumber + ': question ' + number + ' appears more than once.');
+        if (number !== questions.length + 1) throw new Error('Line ' + lineNumber + ': question ' + (questions.length + 1) + ' is missing or out of order before question ' + number + '.');
+        seen.add(number); current = { prompt: header[3].trim(), answers: [] }; questions.push(current); return;
+      }
+      if (!current) {
+        const meta = /^(pack|title|description)\s*:\s*(.*)$/i.exec(line);
+        if (!meta) throw new Error('Line ' + lineNumber + ': start your pack with Q1: followed by its question, or an optional Pack: title.');
+        const key = /^description$/i.test(meta[1]) ? 'description' : 'title';
+        if (Object.prototype.hasOwnProperty.call(metadata, key)) throw new Error('Line ' + lineNumber + ': the pack ' + key + ' appears more than once.');
+        metadata[key] = meta[2]; return;
+      }
+      const answerLine = rawLine.trim().replace(/^[-*+]\s+/, '');
+      if (++answerCount > ROW_LIMIT) throw new Error('Imports may contain at most 7,000 answer rows.');
+      if (current.answers.length >= 1000) throw new Error('Question ' + questions.length + ' may contain at most 1,000 accepted answers.');
+      try {
+        const row = answerLine.includes('|') ? rows(answerLine, '|', true)[0] : [answerLine];
+        if (!row || row.length > 4) throw new Error('Use answer | rank | aliases separated by semicolons | explanation.');
+        current.answers.push(makeAnswer({ canonical: row[0], tier: row[1], aliases: aliases(row[2] || '', ';'), explanation: row[3] || '' }, 'dino', 'Question ' + questions.length + ' answer'));
+      } catch (error) { throw new Error('Line ' + lineNumber + ': ' + error.message); }
+    });
+    return makePack(questions, options, metadata);
+  }
   function parsePack(value, options = {}) {
-    const source = inputText(value).trim();
+    const source = unwrapFence(inputText(value).trim());
     if (!source) throw new Error('Paste a pack or choose a file first.');
     const format = (options.format || 'auto').toLowerCase();
-    if (!['auto', 'csv', 'tsv', 'json'].includes(format)) throw new Error('Choose CSV, TSV, JSON, or automatic detection.');
+    if (!['auto', 'text', 'txt', 'csv', 'tsv', 'json'].includes(format)) throw new Error('Choose readable text, CSV, TSV, JSON, or automatic detection.');
+    if (format === 'text' || format === 'txt' || (format === 'auto' && (/^(?:pack|title|description)\s*:/i.test(blockLine(source.split(/\r?\n/, 1)[0])) || questionHeader.test(blockLine(source.split(/\r?\n/, 1)[0]))))) return parseTextPack(source, options);
     if (format === 'json' || (format === 'auto' && /^[\[{]/.test(source))) {
       let parsed;
       try { parsed = JSON.parse(source); } catch { throw new Error('The JSON is not valid. Check commas, brackets, and quotation marks.'); }
@@ -161,6 +206,7 @@
     return mergeAnswers(answers);
   }
   const template = () => 'question,prompt,answer,tier,aliases,explanation\r\n' + Array.from({ length: 7 }, (_, i) => (i + 1) + ',,,,,').join('\r\n') + '\r\n';
+  const textTemplate = () => Array.from({ length: 7 }, (_, i) => 'Q' + (i + 1) + ': ').join('\n\n') + '\n';
   function mergeExisting(existing, incoming) {
     if (!Array.isArray(existing) || !Array.isArray(incoming)) throw new Error('Existing and imported answers must be arrays.');
     // A newly opened question contains an empty editor row, not an accepted answer.
@@ -172,7 +218,7 @@
     });
     return mergeAnswers(values);
   }
-  const api = Object.freeze({ parsePack, parseAnswers, mergeAnswers: mergeExisting, template });
+  const api = Object.freeze({ parsePack, parseAnswers, mergeAnswers: mergeExisting, template, textTemplate });
   root.CouncilBulk = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

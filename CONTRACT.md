@@ -72,5 +72,11 @@ Leaderboard rows include marks:[7 emoji strings],markTiers:[7 tier IDs|null]. Ov
 Admin invalid history uses type:'invalid_attempt',actionable:false,submissionId:null,answers:[]. It cannot be passed to the score-correction RPC; it is a record of what was tried. Normal submitted rows are actionable.
 
 ## Bulk and scene modules
-CouncilBulk.parsePack(text,options),parseAnswers(text,options),mergeAnswers(existing,incoming),template() support safe unpublished authoring.
-CouncilArcade.scene(options),mount(root),descend(options),miss(),gobble(),sound(kind,tier),unlockAudio(),setSound(bool),destroy() provide the original local animation/audio engine. A gold event means the current accepted answer earned100, while scene gold persists independently.
+CouncilBulk.parsePack(text,options),parseAnswers(text,options),mergeAnswers(existing,incoming),template(),textTemplate() support safe unpublished authoring.
+CouncilArcade.scene(options),mount(root),resize(),descend(options),dismissQuestion(),prepareNext(),miss(),gobble(),sound(kind,tier),unlockAudio(),setSound(bool),destroy() provide the original local animation/audio engine. A gold event means the current accepted answer earned100, while scene gold persists independently.
+
+The UI delays its own locked-answer award display until landing. The scene hides the rank ruler while thinking, reveals it stationary during descent, and reveals the winning rank only at landing. prepareNext() fades the old turkey position before a new question entrance.
+
+During a locked-answer animation the question/result UI is omitted, leaving the scene and numeric HUD. dismissQuestion() fades the old question and waits for a changing visual viewport after input blur; prepareNext() fades the result before a new question starts. Viewport event handlers resize the game and maintain tunnel/avatar alignment. Invalid/suggestion feedback patches the existing form rather than replacing its input. Gobble audio is a cached local synthesized bird buffer, two calls at gain .035, with rapid-tap suppression; no speech APIs are used.
+
+Readable bulk import auto-detects Pack:/Description: metadata, Q1: through Q7: prompt/answer blocks, or numbered prompt-only lists. Answer rows use answer | rank | semicolon-separated aliases | explanation. Bare answer lines explicitly default to Dino. Imports remain new private drafts and preserve all existing validation and limits. Import errors keep the modal/paste intact.

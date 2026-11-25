@@ -116,3 +116,55 @@ test('downloadable template exactly matches template() apart from native line en
   assert.equal(source.trim().split('\n').length, 8);
   assert.ok(source.trim().split('\n').slice(1).every(line=>/^[1-7],,,,,$/.test(line)));
 });
+
+const textPack = () => 'Pack: Supplied fixture pack\nDescription: Only parser fixtures.\n\n' + Array.from({length:7},(_,i)=>`Q${i+1}: Supplied fixture prompt ${i+1}\nFixture answer ${i+1} | ${i===0?100:10} | Alias ${i+1};Other alias ${i+1} | ${i===0?'Supplied special subtitle':''}`).join('\n\n');
+test('readable text imports authored prompts, ranks, aliases and subtitles as a private pack',()=>{
+ const value=bulk.parsePack(textPack());assert.equal(value.title,'Supplied fixture pack');assert.equal(value.description,'Only parser fixtures.');assert.equal(value.id,null);assert.equal(value.published,false);assert.equal(value.questions.length,7);
+ const first=value.questions[0].answers[0];assert.equal(first.tier,'councillion');assert.equal(first.explanation,'Supplied special subtitle');assert.deepEqual(first.aliases,['Alias 1','Other alias 1']);assert.equal(value.questions[6].answers[0].tier,'dino');
+ assert.notEqual(first.id,bulk.parsePack(textPack()).questions[0].answers[0].id);
+});
+test('a numbered list creates only seven supplied prompts with no fabricated answers',()=>{
+ const source=Array.from({length:7},(_,i)=>`${i+1}. Supplied prompt ${i+1}`).join('\n');const value=bulk.parsePack(source,{title:'Prompt draft'});
+ assert.equal(value.title,'Prompt draft');assert.ok(value.questions.every(q=>q.answers.length===0));assert.equal(value.questions[6].prompt,'Supplied prompt 7');assert.equal(value.published,false);
+});
+test('text blocks accept Markdown headings, bulleted answers and a complete ChatGPT text fence',()=>{
+ const source='```text\n'+Array.from({length:7},(_,i)=>`## Q${i+1}: Supplied prompt ${i+1}\n- Fixture answer ${i+1}\n* Other fixture ${i+1} | Grimkyle\n- 2. A numeric answer ${i+1} | 15`).join('\n\n')+'\n```';
+ const value=bulk.parsePack(source);assert.equal(value.questions[0].answers.length,3);assert.equal(value.questions[0].answers[0].tier,'dino');assert.equal(value.questions[0].answers[1].tier,'grimkyle');assert.equal(value.questions[0].answers[2].canonical,'2. A numeric answer 1');assert.equal(value.questions[0].answers[2].tier,'kalen');
+ assert.equal(bulk.parsePack('```json\n'+JSON.stringify(pack())+'\n```').title,'Fixture pack');
+});
+test('readable question numbering and metadata errors identify the conflicting line',()=>{
+ assert.throws(()=>bulk.parsePack(textPack().replace('Q7:','Q6:')),/Line \d+: question 6 appears more than once/);
+ assert.throws(()=>bulk.parsePack(textPack().replace('Q2:','Q3:')),/question 2 is missing or out of order/);
+ assert.throws(()=>bulk.parsePack(textPack().replace('Q7:','Q8:')),/question number must be from 1 to 7/);
+ assert.throws(()=>bulk.parsePack(textPack().split('\n\n').slice(0,-1).join('\n\n')),/exactly seven/);
+ assert.throws(()=>bulk.parsePack('Pack: First\nTitle: Second\n'+textPack()),/pack title appears more than once/);
+ assert.throws(()=>bulk.parsePack('```text\n'+textPack()),/complete fenced text block/);
+ assert.throws(()=>bulk.parsePack('Unlabelled preamble\n'+textPack(),{format:'text'}),/Line 1: start your pack/);
+});
+test('readable rows validate ranks, fields and collisions while merging matching duplicates',()=>{
+ const value=bulk.parsePack(textPack()+'\nFIXTURE ANSWER 7 | Dino | New alias');assert.equal(value.questions[6].answers.length,1);assert.ok(value.questions[6].answers[0].aliases.includes('New alias'));
+ assert.throws(()=>bulk.parsePack(textPack()+'\nFixture answer 7 | Kalen'),/different ranks/);
+ assert.throws(()=>bulk.parsePack(textPack()+'\nDifferent fixture | 10 | Alias 7'),/two different answers/);
+ assert.throws(()=>bulk.parsePack(textPack()+'\nDifferent fixture | 999'),/Line \d+: Unknown rank/);
+ assert.throws(()=>bulk.parsePack(textPack()+'\nDifferent fixture | constructor'),/Unknown rank/);
+ assert.throws(()=>bulk.parsePack(textPack()+'\n'+ 'A'.repeat(161)),/160 characters/);
+ assert.throws(()=>bulk.parsePack(textPack()+'\nOne | 10 | Alias | Subtitle | Extra'),/Use answer \| rank/);
+});
+test('readable quoted pipes, punctuation and supplied executable-looking content stay inert',()=>{
+ const source=textPack().replace('Supplied fixture prompt 1','<img src=x onerror=alert(1)>').replace('Fixture answer 1 | 100 | Alias 1;Other alias 1 | Supplied special subtitle','"Fixture | quoted answer" | 100 | Alternative | "Subtitle, with a pipe | kept"');
+ const value=bulk.parsePack(source);assert.equal(value.questions[0].prompt,'<img src=x onerror=alert(1)>');assert.equal(value.questions[0].answers[0].canonical,'Fixture | quoted answer');assert.equal(value.questions[0].answers[0].explanation,'Subtitle, with a pipe | kept');
+ const original='alert("fixture")';assert.equal(bulk.parsePack(textPack()+'\n'+original).questions[6].answers.at(-1).canonical,original);
+});
+test('text imports allow incomplete private answers but still require each supplied prompt',()=>{
+ const source=Array.from({length:7},(_,i)=>`Q${i+1}: Supplied prompt ${i+1}`).join('\n');const value=bulk.parsePack(source+'\nFixture answer | 100',{format:'txt'});assert.equal(value.questions[6].answers[0].explanation,'');assert.ok(value.questions.slice(0,6).every(q=>q.answers.length===0));
+ assert.throws(()=>bulk.parsePack(source.replace('Q3: Supplied prompt 3','Q3:')),/Question 3 prompt cannot be blank/);
+});
+test('text imports enforce file size, per-question answer limits and unsupported format errors',()=>{
+ assert.throws(()=>bulk.parsePack(textPack()+'\n'+Array.from({length:1000},(_,i)=>'Additional fixture '+i).join('\n')),/1,000 accepted answers/);
+ assert.throws(()=>bulk.parsePack('Q1: '+ 'a'.repeat(1024*1024)),/1 MB/);
+ assert.throws(()=>bulk.parsePack(textPack(),{format:'executable'}),/Choose readable text/);
+});
+test('readable scaffold matches the downloadable blank file and cannot become a pack unfilled',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../pack-template.txt'),'utf8');assert.equal(source,bulk.textTemplate());assert.deepEqual(source.trim().split(/\n\s*\n/).map(s=>s.trim()),Array.from({length:7},(_,i)=>`Q${i+1}:`));
+ assert.throws(()=>bulk.parsePack(source),/Question 1 prompt cannot be blank/);
+});

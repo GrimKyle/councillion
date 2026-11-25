@@ -165,8 +165,28 @@ Councillion artwork is original pixel geometry; no Krillion assets or source wer
 - The bird now moves downward against a stationary rank ruler on the right. Terrain scrolls independently, and the tunnel extends to the bird with an animated digging edge and flying dirt. Each crossed tier glows and plays its note.
 - A blank submission skips for zero with a short stumble, sound and 850ms pause. The next timer only starts when you continue. Invalid answers instead say `"your guess" is invalid. Try again.` and preserve the current clock.
 - Fuzzy spellings prompt `Did you mean “Apple”?` with **Yes, use Apple** and **Keep typing**. Exact accepted answers and explicit aliases still submit directly. Confirmation cannot beat an expired deadline.
-- Click or keyboard-activate the turkey for a hop, **GOBBLE!** bubble and gobble sound/voice. The sound toggle also mutes it. Reduced-motion preferences are respected.
+- Click or keyboard-activate the turkey for a hop, **GOBBLE!** bubble and quiet synthesized gobble-gobble sound. The sound toggle also mutes it. Reduced-motion preferences are respected.
 - Returning to an interrupted run consumes the active question for zero, then starts the next. Resume compares the interrupted question ID, so a retried resume cannot skip a second question. Simply fetching state does not consume questions.
 - Leaderboard symbols represent all seven answer scores, with a point legend and question-by-question labels. Overall standings show symbols from the most recently completed official pack.
 
 **Existing Supabase backend:** run `upgrade-answer-feedback.sql` **after** `upgrade-arcade-gameplay.sql`, then deploy the updated frontend. This adds confirmation and resume RPCs and preserves all packs and past scores. A new backend only needs the latest `supabase.sql`. Local standalone play needs no SQL update.
+
+### Hidden rank ruler and smooth reveal
+
+While answering (including invalid guesses and typo suggestions), rank rails and future depth ticks stay hidden. A locked answer fades in the stationary ruler, pauses briefly, then starts a smooth descent. The result banner, new progress color, winning-rank emphasis and new golden transformation wait until landing. The previous total remains visible and counts upward during the descent. Continuing to the next question fades out the old turkey position before fading it back in with the ruler hidden. This update changes frontend files only; no additional SQL migration is required.
+
+### Mobile and cinematic answer sequence
+
+Accepted answers now fade the prompt, input, feedback, navigation and pack title away before the descent. During the walk, only the bird, scenery, depth/score counters and stationary rank ruler remain visible. The result card, points, Councillion explanation (when earned) and **Burrow again** button appear on landing. Continuing fades out the old result before the next prompt enters; its 25-second timer begins after the outgoing transition.
+
+The gameplay layout uses the visible viewport rather than a 650px minimum height. It follows keyboard resize/scroll events, includes iPhone safe-area insets, uses 16px answer text and large tap targets, and has a compact menu. On phones the question and controls share the available vertical space; a smaller keyboard viewport can scroll this panel internally. Invalid guesses and suggestions update in place to keep the existing input and keyboard. Mobile input is not forcibly focused on every new question. Portrait and landscape CSS are included.
+
+Clicking the turkey plays two quiet locally synthesized bird calls. There is no text-to-speech, voice service, downloaded sound file or audio network request. Fast taps do not stack gobble recordings, and the sound toggle mutes ongoing audio. The first tap can resume suspended mobile audio.
+
+This is a frontend update; no new SQL migration is required. Real iPhone Safari layout/audio still needs a device rehearsal: test a long question at 320px/375px/390px/430px widths, open the keyboard, submit a typo, dismiss the suggestion, submit a valid answer, watch the entire descent, continue, rotate the phone and check the mute toggle. Automated viewport and audio-synthesis checks do not replace this rehearsal.
+
+### Paste an entire pack without a spreadsheet
+
+Open **Game Master → Paste a pack**. Paste seven `Q1:` through `Q7:` blocks, with each question's answer list directly below it. Answer rows use `Answer | points | aliases separated by ; | Councillion subtitle`. A bare answer explicitly defaults to Dino (10). A plain numbered list of seven prompts also works and creates a draft with empty answer lists. Download the text scaffold from the dialog, or use `pack-template.txt`.
+
+You can give ChatGPT your supplied questions, answer lists and point tiers and request a Councillion text pack. Paste its returned block directly, including optional text code fences, or upload its `.txt`/JSON file. CSV and TSV still work. Nothing is published automatically. A malformed paste shows its error inside the import form and keeps your text intact. See `BULK-IMPORT.md` for the full grammar.

@@ -3,7 +3,11 @@ const path=require('node:path'),test=require('node:test');
 const directory=path.resolve(__dirname,'..')+'/';
 const app={innerHTML:''},dialog={innerHTML:'',querySelector(){return null},querySelectorAll(){return[]}},listeners={},storage=new Map();
 const document={getElementById(id){return id==='app'?app:id==='dialog-root'?dialog:null},addEventListener(type,fn){(listeners[type]??=[]).push(fn)},querySelectorAll(){return[]},title:'',activeElement:null,body:{append(){}},createElement(){return{setAttribute(){},remove(){}}}};
-const context={console,document,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,String(v)),removeItem:k=>storage.delete(k)},crypto:crypto.webcrypto,setInterval(){},setTimeout(fn){fn();return 0},Date,Math,JSON,Promise,Map,Set,URL,Blob,atob,fetch(){throw Error('No external request expected')},navigator:{},FormData:class{constructor(form){this.data=form.values}get(k){return this.data[k]??null}},matchMedia(){return{matches:true}},confirm(){return true},scrollTo(){},location:{reload(){}}};context.arcadeEvents=[];context.CouncilArcade={scene:opts=>`<div class="arcade-scene">${opts.turkeySVG}</div>`,mount(){},destroy(){},setSound(){},unlockAudio(){},sound(kind){context.arcadeEvents.push({sound:kind});},async descend(opts){context.arcadeEvents.push(opts);},async miss(){context.arcadeEvents.push({miss:true});},gobble(){context.arcadeEvents.push({gobble:true});}};context.window=context;
+const context={console,document,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,String(v)),removeItem:k=>storage.delete(k)},crypto:crypto.webcrypto,setInterval(){},setTimeout(fn){fn();return 0},Date,Math,JSON,Promise,Map,Set,URL,Blob,atob,fetch(){throw Error('No external request expected')},navigator:{},FormData:class{constructor(form){this.data=form.values}get(k){return this.data[k]??null}},matchMedia(){return{matches:true}},confirm(){return true},scrollTo(){},location:{reload(){}}};context.arcadeEvents=[];context.CouncilArcade={scene:opts=>`<div class="arcade-scene">${opts.turkeySVG}</div>`,mount(){},destroy(){},setSound(){},unlockAudio(){},sound(kind){context.arcadeEvents.push({sound:kind});},async descend(opts){context.arcadeEvents.push(opts);},async miss(){context.arcadeEvents.push({miss:true});},gobble(){context.arcadeEvents.push({gobble:true});}};const viewportEvents={},viewportStyles=new Map(),keyboardClasses=new Set();
+context.innerHeight=844;context.visualViewport={height:844,offsetTop:0,addEventListener(type,fn){(viewportEvents[type]??=[]).push(fn);}};
+document.documentElement={style:{setProperty(k,v){viewportStyles.set(k,v);}},classList:{toggle(){}}};
+app.querySelector=selector=>selector==='.playing-arcade'&&app.innerHTML.includes('playing-arcade')?{classList:{toggle(k,on){if(on)keyboardClasses.add(k);else keyboardClasses.delete(k);},contains:k=>keyboardClasses.has(k)}}:null;
+context.window=context;
 vm.createContext(context);vm.runInContext(fs.readFileSync(directory+'api.js','utf8'),context);vm.runInContext(fs.readFileSync(directory+'bulk.js','utf8'),context);vm.runInContext(fs.readFileSync(directory+'app.js','utf8'),context);
 const settle=()=>new Promise(resolve=>setImmediate(resolve));
 async function click(action,id){const b={dataset:{action,id},disabled:false};for(const listener of listeners.click||[])listener({target:{closest(){return b}}});await settle();await settle();}
@@ -39,13 +43,40 @@ await click('publish-pack',pack.id);assert.equal((await context.CouncilAPI.listP
 context.confirm=()=>false;await click('delete-pack',pack.id);assert.equal((await context.CouncilAPI.adminList()).length,1);
 context.confirm=()=>true;await click('delete-pack',pack.id);assert.equal((await context.CouncilAPI.adminList()).length,0);
 const goldPack=await context.CouncilAPI.adminSave({title:'Golden test fixture',published:true,questions:Array.from({length:7},(_,i)=>({prompt:'Golden prompt '+i,answers:[{canonical:'FixtureGold',tier:'councillion',aliases:[],explanation:'A test-only explanation'}]}))});
-await click('packs');await click('play',goldPack.id);await submit('answer',{answer:'FixtureGol'});assert.match(app.innerHTML,/Did you mean “FixtureGold”/);assert.match(app.innerHTML,/QUESTION 1/);assert.match(app.innerHTML,/confirm-suggestion/);await click('confirm-suggestion');assert.match(app.innerHTML,/ONE IN A COUNCILLION/);assert.match(app.innerHTML,/turkey-gold/);assert.ok(context.arcadeEvents.some(x=>x.gold===true));await click('next-question');assert.match(app.innerHTML,/QUESTION 2/);assert.match(app.innerHTML,/turkey-gold/);
+await click('packs');await click('play',goldPack.id);await submit('answer',{answer:'FixtureGol'});assert.match(app.innerHTML,/Did you mean “FixtureGold”/);assert.match(app.innerHTML,/QUESTION 1/);assert.match(app.innerHTML,/confirm-suggestion/);const originalDescent=context.CouncilArcade.descend;let releaseDescent;
+context.CouncilArcade.descend=opts=>{context.arcadeEvents.push(opts);return new Promise(resolve=>releaseDescent=resolve);};
+await click('confirm-suggestion');assert.match(app.innerHTML,/is-in-flight/);assert.ok(!app.innerHTML.includes('class="question-ui"'));assert.ok(!app.innerHTML.includes('class="result-ui"'));assert.ok(!app.innerHTML.includes('class="burrow-controls'));assert.ok(!app.innerHTML.includes('BURROWING…'));assert.ok(!app.innerHTML.includes('data-tier="councillion"'));assert.ok(!app.innerHTML.includes('ONE IN A COUNCILLION!'));assert.ok(!app.innerHTML.includes('A test-only explanation'));assert.match(app.innerHTML,/id="burrow-score">0</);assert.ok(!app.innerHTML.includes('data-action="next-question"'));
+releaseDescent();await settle();await settle();context.CouncilArcade.descend=originalDescent;
+assert.match(app.innerHTML,/ONE IN A COUNCILLION/);assert.match(app.innerHTML,/turkey-gold/);assert.ok(context.arcadeEvents.some(x=>x.gold===true));await click('next-question');assert.match(app.innerHTML,/QUESTION 2/);assert.match(app.innerHTML,/turkey-gold/);
 await click('gobble');assert.ok(context.arcadeEvents.some(x=>x.gobble));
 await submit('answer',{answer:''});assert.match(app.innerHTML,/NO ANSWER · NO DEPTH/);assert.ok(context.arcadeEvents.some(x=>x.miss));await click('next-question');assert.match(app.innerHTML,/QUESTION 3/);
 await click('packs');await click('play',goldPack.id);assert.match(app.innerHTML,/QUESTION 4/);
 await click('admin');await click('bulk-pack');assert.match(dialog.innerHTML,/BUILD A PACK IN ONE PASTE/);
+const unchangedDialog=dialog.innerHTML,importStatus={textContent:'',classList:{add(){}}},originalDialogQuery=dialog.querySelector;
+dialog.querySelector=selector=>selector==='[data-import-status]'?importStatus:null;
+await submit('bulk-pack',{title:'Invalid draft',text:'not a valid pack'});assert.equal(dialog.innerHTML,unchangedDialog);assert.ok(importStatus.textContent.length>0);dialog.querySelector=originalDialogQuery;
 const csv='question,prompt,answer,tier,aliases,explanation\n'+Array.from({length:7},(_,i)=>`${i+1},Bulk fixture ${i},Answer ${i},10,,`).join('\n');
 await submit('bulk-pack',{title:'Bulk test',text:csv});assert.match(app.innerHTML,/BUILD A PACK/);assert.match(app.innerHTML,/Bulk test/);await click('bulk-answers');assert.match(dialog.innerHTML,/PASTE YOUR ANSWER LIST/);await submit('bulk-answers',{tier:'dino',text:'Another fixture\nYet another fixture'});assert.match(app.innerHTML,/Another fixture/);
 await click('settings');assert.match(dialog.innerHTML,/CONNECT THE COUNCIL/);
 console.log('PASS: frontend boots empty, authoring screen, escaped pack data, username gating, all 7 timed answer transitions, no early answer leaks, score/results breakdown, leaderboard, connection dialog.');
+});
+
+test('mobile viewport follows keyboard size and typo feedback preserves the existing answer input',async()=>{
+ await click('close-dialog');const pack=await context.CouncilAPI.adminSave({title:'Mobile fixture only',published:true,questions:Array.from({length:7},(_,i)=>({prompt:'Mobile prompt '+i,answers:[{canonical:'MobileAnswer',tier:'dino',aliases:[],explanation:''}]}))});await click('packs');await click('play',pack.id);
+ const before=app.innerHTML,feedback={textContent:''},slot={innerHTML:''},form={classList:{toggle(){}},querySelector:s=>s==='.burrow-feedback'?feedback:s==='.answer-suggestion-slot'?slot:null,scrollIntoView(){}};
+ const originalQuery=document.querySelector;document.querySelector=s=>s==='[data-form="answer"]'?form:null;
+ const first=await context.CouncilAPI.getState((await context.CouncilAPI.listPacks()).find(p=>p.id===pack.id).myAttempt.id);
+ await submit('answer',{answer:'MoblieAnswer'});assert.equal(app.innerHTML,before);assert.match(feedback.textContent,/Did you mean “MobileAnswer”/);assert.match(slot.innerHTML,/YES, USE IT/);assert.equal((await context.CouncilAPI.getState(first.id)).deadline,first.deadline);
+ context.visualViewport.height=390;context.visualViewport.offsetTop=12;for(const fn of viewportEvents.resize)fn();assert.equal(viewportStyles.get('--game-viewport-height'),'390px');assert.equal(viewportStyles.get('--game-viewport-top'),'12px');assert.ok(keyboardClasses.has('keyboard-open'));
+ context.innerHeight=390;document.activeElement={tagName:'INPUT'};for(const fn of viewportEvents.resize)fn();assert.ok(keyboardClasses.has('keyboard-open'));context.innerHeight=844;document.activeElement=null;
+ await click('dismiss-suggestion');assert.equal(slot.innerHTML,'');assert.equal(app.innerHTML,before);
+ context.visualViewport.height=844;context.visualViewport.offsetTop=0;for(const fn of viewportEvents.resize)fn();assert.ok(!keyboardClasses.has('keyboard-open'));
+ document.querySelector=originalQuery;await submit('answer',{answer:'MobileAnswer'});assert.match(app.innerHTML,/BURROW AGAIN/);assert.match(app.innerHTML,/result-ui/);
+});
+
+test('readable pack paste fills all seven questions into a new private draft',async()=>{
+ await click('admin');await click('bulk-pack');assert.match(dialog.innerHTML,/Download text template/);assert.match(dialog.innerHTML,/ChatGPT/);
+ const text='Pack: Readable UI fixture\n\n'+Array.from({length:7},(_,i)=>`Q${i+1}: Supplied UI prompt ${i+1}\nSupplied UI answer ${i+1} | ${i===0?100:10} | Alternate ${i+1} | ${i===0?'Supplied UI subtitle':''}`).join('\n\n');
+ await submit('bulk-pack',{title:'Fallback',text});assert.match(app.innerHTML,/Readable UI fixture/);assert.match(app.innerHTML,/Supplied UI prompt 1/);assert.match(app.innerHTML,/Supplied UI answer 1/);assert.match(app.innerHTML,/Supplied UI subtitle/);assert.match(app.innerHTML,/Filled 7 questions and 7 accepted answers/);
+ await click('save-draft');const pack=(await context.CouncilAPI.adminList()).find(p=>p.title==='Readable UI fixture');assert.ok(pack);assert.equal(pack.published,false);assert.equal((await context.CouncilAPI.adminGet(pack.id)).questions.length,7);assert.ok(!(await context.CouncilAPI.listPacks()).some(p=>p.id===pack.id));
 });

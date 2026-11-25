@@ -1,6 +1,44 @@
 # Bulk pack entry
 
-You can write your own content in a spreadsheet, paste a list into one question, or ask for your supplied list to be converted into a pack file. Importing does not publish anything automatically; review the filled editor and publish when ready.
+Paste readable text, copy a spreadsheet, or upload a pack file. Importing fills a private draft; publish it when it is complete. You can also give ChatGPT your prompts, accepted answers, ranks and special subtitles and ask for a copy-and-paste block in the format below. No AI connection or API key is needed by the website.
+
+## Easiest: paste readable text
+
+Use **Paste a pack** and paste one block containing questions Q1 through Q7 in order. A `Pack:` title and `Description:` are optional; put them before Q1. Use one accepted answer per line under its question:
+
+```text
+Pack: Your pack title
+Description: Your description
+
+Q1: Your first question
+Your accepted answer | 100 | Alternative name;Another alias | Your Councillion subtitle
+Another accepted answer | 30
+A common accepted answer
+
+Q2: Your second question
+```
+
+Continue through `Q7:`. The block above only illustrates the syntax and is intentionally incomplete. Download `pack-template.txt` for seven blank question headers, then fill in their prompts.
+
+The answer columns are **answer | rank | aliases | explanation**. Rank may be a Council name or 10, 15, 30, 60, 85, 100. Separate aliases with semicolons. Omit trailing columns you do not need. An answer-only line explicitly uses **Dino / 10 points**; the importer does not decide rarity from the answer. A 100-point answer needs its subtitle before publication, though it can be added to the imported draft later.
+
+Blank lines and Markdown answer bullets (`-`, `*`, `+`) are supported. A full ChatGPT ` ```text ` block can be pasted including its fences. If an answer starts like a numbered question, prefix it with a bullet: `- 2. Your numeric answer | 15`. A field containing a literal `|` must be quoted, for example `"Your answer | with a pipe" | 10`. Double an embedded quotation mark inside a quoted field.
+
+You can also paste just seven numbered prompts:
+
+```text
+1. Your first question
+2. Your second question
+3. Your third question
+4. Your fourth question
+5. Your fifth question
+6. Your sixth question
+7. Your seventh question
+```
+
+This creates seven supplied questions with **empty answer lists**. It stays a private draft until you add accepted answers and publish. The importer never fabricates missing answers or promotes a draft to a public pack.
+
+Readable text can be uploaded as `.txt` through the same pack uploader. CSV, TSV and exported JSON still work. Malformed numbering, duplicate questions, conflicting answer ranks and aliases are rejected with a useful error.
 
 ## Whole pack from Excel or another spreadsheet
 

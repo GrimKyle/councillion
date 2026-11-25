@@ -8,7 +8,7 @@ import shutil
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT / 'dist'
 DIST.mkdir(exist_ok=True)
-for name in ('index.html', 'styles.css', 'arcade.css', 'config.js', 'api.js', 'bulk.js', 'arcade.js', 'app.js'):
+for name in ('index.html', 'styles.css', 'arcade.css', 'config.js', 'api.js', 'bulk.js', 'arcade.js', 'app.js', 'reset-password.html', 'password-reset.js'):
     shutil.copy2(ROOT / name, DIST / name)
 url = os.getenv('COUNCIL_SUPABASE_URL', '').strip()
 key = os.getenv('COUNCIL_SUPABASE_ANON_KEY', '').strip()

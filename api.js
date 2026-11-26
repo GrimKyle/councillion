@@ -52,7 +52,9 @@
     write(d) { try { this.storage.setItem('councillion.game.v1', JSON.stringify(d)); } catch { throw new Error('This browser could not save the game. Allow site storage or export your packs before continuing.'); } }
     identity() { return this.storage.getItem('councillion.player.v1'); }
     player(d) { return d.players.find(p => p.id === this.identity()) || null; }
-    profile() { const p = this.player(this.read()); return p ? { ...p, isAdmin: false } : null; }
+    profile() { const p = this.player(this.read()); return p ? { ...p, isAdmin: this.storage.getItem('councillion.local-admin') === p.id } : null; }
+    host(d) { return !!this.player(d)?.gameMaster || this.player(d)?.id === this.storage.getItem('councillion.local-admin'); }
+    eligible(d,a) { return a.isOfficial !== false && !a.voidedAt && !d.players.find(p=>p.id===a.playerId)?.gameMaster; }
     enter(name) {
       const username = String(name || '').trim();
       if (Array.from(username).length < 2 || Array.from(username).length > 24 || /[\u0000-\u001f\u007f-\u009f<>&"'\\/\u200b\u200e\u200f\u202a-\u202e\u2066-\u2069]/u.test(username) || !/[\p{L}\p{N}\p{Extended_Pictographic}]/u.test(username)) throw new Error('Use 2–24 visible characters. Emoji are welcome; avoid control characters and HTML symbols.');
@@ -60,7 +62,7 @@
       if (p && p.username !== username && d.attempts.some(a => a.playerId === p.id)) throw new Error('Your name is locked after starting a pack. Keep your original username.');
       if (d.players.some(x => x.username.toLowerCase() === username.toLowerCase() && x.id !== p?.id)) throw new Error('That username is taken on this browser. Choose another.');
       if (!p) { p = { id: uuid(), username }; d.players.push(p); this.storage.setItem('councillion.player.v1', p.id); } else p.username = username;
-      this.write(d); return { ...p, isAdmin: false };
+      this.write(d); return this.profile();
     }
     needPlayer(d) { const p = this.player(d); if (!p) throw new Error('Enter your username first.'); return p; }
     owned(d, id) { const p = this.needPlayer(d); const a = d.attempts.find(x => x.id === id && x.playerId === p.id); if (!a) throw new Error('This attempt belongs to a different player.'); if (a.status !== 'completed') this.openPack(d,a.packId); return a; }
@@ -69,7 +71,7 @@
       const p = d.packs.find(x => x.id === a.packId);
       const history = this.scored(d,a).map(row=>({questionId:row.questionId,prompt:p.questions.find(q=>q.id===row.questionId).prompt,rawAnswer:row.rawAnswer,canonical:row.canonical,points:row.points,tier:row.tier,explanation:row.explanation,reviewStatus:row.reviewStatus}));
       const runScore=history.reduce((n,row)=>n+row.points,0);
-      return { id:a.id,packId:p.id,title:p.title,isOfficial:a.isOfficial!==false,status:a.status,position:Math.min(a.submissions.length,6),deadline:a.deadline,serverNow:this.clock(),lockedCount:a.submissions.length,question:a.status==='active'?{id:p.questions[a.submissions.length].id,prompt:p.questions[a.submissions.length].prompt}:null,runScore,depth:runScore*10,hasCouncillion:history.some(row=>row.points===100),history,lastAnswer:history.at(-1)||null };
+      return { id:a.id,packId:p.id,title:p.title,isOfficial:this.eligible(d,a),scoreStatus:a.voidedAt?'removed':a.isOfficial===false?'practice':'official',isGameMaster:!!d.players.find(p=>p.id===a.playerId)?.gameMaster,status:a.status,position:Math.min(a.submissions.length,6),deadline:a.deadline,serverNow:this.clock(),lockedCount:a.submissions.length,question:a.status==='active'?{id:p.questions[a.submissions.length].id,prompt:p.questions[a.submissions.length].prompt}:null,runScore,depth:runScore*10,hasCouncillion:history.some(row=>row.points===100),history,lastAnswer:history.at(-1)||null };
     }
     expire(d, a) { if (a.status === 'active' && this.clock() >= a.deadline) this.lock(d, a, '', true); }
     lock(d, a, text, timeout = false, requestId = uuid()) {
@@ -82,21 +84,22 @@
     }
     list(admin = false) {
       const d = this.read(), player = this.player(d);
-      return d.packs.filter(p => !p.deletedAt && (admin || p.published)).map(p => { const a = d.attempts.find(x => x.packId === p.id && x.playerId === player?.id && x.isOfficial !== false); const practice = d.attempts.filter(x => x.packId === p.id && x.playerId === player?.id && x.isOfficial === false && x.status !== 'completed').at(-1); return { id: p.id, title: p.title, description: p.description, icon: p.icon, color: p.color, published: p.published, completedCount: d.attempts.filter(a => a.packId === p.id && a.status === 'completed' && a.isOfficial !== false).length, myAttempt: a ? { id: a.id, status: a.status } : null, myPractice: practice ? { id: practice.id, status: practice.status } : null }; });
+      return d.packs.filter(p => !p.deletedAt && (admin || p.published)).map(p => { const a = d.attempts.find(x => x.packId === p.id && x.playerId === player?.id && x.isOfficial !== false); const practice = d.attempts.filter(x => x.packId === p.id && x.playerId === player?.id && x.isOfficial === false && x.status !== 'completed').at(-1); return { id: p.id, title: p.title, description: p.description, icon: p.icon, color: p.color, published: p.published, completedCount: d.attempts.filter(a => a.packId === p.id && a.status === 'completed' && this.eligible(d,a)).length, myAttempt: a ? { id: a.id, status: a.status } : null, myPractice: practice ? { id: practice.id, status: practice.status } : null }; });
     }
     begin(id) {
       const d = this.read(), player = this.needPlayer(d), pack = d.packs.find(p => p.id === id);
       this.openPack(d,id);
-      let a = d.attempts.find(a => a.packId === id && a.playerId === player.id && a.isOfficial !== false);
+      const host=this.host(d);
+      let a = host ? d.attempts.filter(a=>a.packId===id&&a.playerId===player.id&&a.isOfficial===false&&a.status!=='completed').at(-1) : d.attempts.find(a => a.packId === id && a.playerId === player.id && a.isOfficial !== false);
       if (!a && !pack.published) throw new Error('This pack is not published.');
-      if (!a) { a = { id: uuid(), playerId: player.id, packId: id, isOfficial: true, status: 'active', deadline: this.clock() + 25000, submissions: [], createdAt: this.clock() }; d.attempts.push(a); }
+      if (!a) { a = { id: uuid(), playerId: player.id, packId: id, isOfficial: !host, status: 'active', deadline: this.clock() + 25000, submissions: [], createdAt: this.clock() }; d.attempts.push(a); }
       this.expire(d, a); this.write(d); return this.state(d, a);
     }
     practice(id, requestId = uuid()) {
       const d = this.read(), player = this.needPlayer(d), pack = d.packs.find(p => p.id === id);
       if (!pack?.published || pack.deletedAt) throw new Error('This pack is not open for replays.');
       const first = d.attempts.find(a => a.packId === id && a.playerId === player.id && a.isOfficial !== false);
-      if (!first || first.status !== 'completed') throw new Error('Finish your first leaderboard run before replaying.');
+      if (!this.host(d) && (!first || first.status !== 'completed')) throw new Error('Finish your first leaderboard run before replaying.');
       let a = d.attempts.find(a => a.id === requestId);
       if (a && (a.playerId !== player.id || a.packId !== id || a.isOfficial !== false)) throw new Error('Replay request ID already used.');
       if (!a) { a = { id: requestId, playerId: player.id, packId: id, isOfficial: false, status: 'active', deadline: this.clock() + 25000, submissions: [], createdAt: this.clock() }; d.attempts.push(a); }
@@ -128,7 +131,7 @@
         if(!prior&&a.invalidGuesses.filter(row=>row.questionId===q.id).length<100)a.invalidGuesses.push({id:uuid(),questionId:q.id,rawAnswer:raw,requestId,at:this.clock()});
         this.write(d);return {...this.state(d,a),feedback:{kind:'invalid',message:`"${raw}" is invalid. Try again.`}};
       }
-      if(!confirm && ![match.canonical,...(match.aliases||[])].some(x=>normalize(x)===normalize(raw)))
+      if(!confirm && normalize(match.canonical)!==normalize(raw))
         return {...this.state(d,a),feedback:{kind:'suggestion',candidate:match.canonical,rawAnswer:raw,message:`Did you mean “${match.canonical}”?`}};
       this.lock(d,a,raw,false,requestId);this.write(d);return this.state(d,a);
     }
@@ -140,17 +143,27 @@
       const d = this.read(), a = this.owned(d, id);
       this.expire(d, a); this.write(d);
       if (a.status !== 'completed') throw new Error('Finish all seven questions before opening results.');
-      const pack = d.packs.find(p => p.id === a.packId), scored = this.scored(d, a), completed = d.attempts.filter(x => x.packId === a.packId && x.status === 'completed' && x.isOfficial !== false);
+      const pack = d.packs.find(p => p.id === a.packId), scored = this.scored(d, a), completed = d.attempts.filter(x => x.packId === a.packId && x.status === 'completed' && this.eligible(d,x));
       const official = completed.find(x => x.playerId === a.playerId);
       const total = completed.length;
       const count = (qid, aid) => completed.filter(x => x.submissions.some(s => s.questionId === qid && s.answerId === aid && s.reviewStatus === 'accepted')).length;
-      return { attemptId: a.id, packId: pack.id, title: pack.title, isOfficial: a.isOfficial !== false, officialAttemptId: official?.id || null, officialScore: official ? this.scored(d, official).reduce((n, s) => n + s.points, 0) : null, username: d.players.find(p => p.id === a.playerId).username, total: scored.reduce((n, s) => n + s.points, 0), max: 700, ones: scored.filter(s => s.points === 100).length, pendingCount: scored.filter(s => s.reviewStatus === 'pending').length, questions: pack.questions.map(q => { const s = scored.find(s => s.questionId === q.id), c = s.answerId && s.reviewStatus === 'accepted' ? count(q.id, s.answerId) : 0; return { id: q.id, prompt: q.prompt, rawAnswer: s.rawAnswer, canonical: s.canonical, points: s.points, tier: s.tier, reviewStatus: s.reviewStatus, explanation: s.explanation, popularity: { count: c, total, percentage: total ? c / total * 100 : 0 }, answers: q.answers.map(ans => { const n = count(q.id, ans.id); return { id: ans.id, canonical: ans.canonical, tier: ans.tier, points: tierFor(ans.tier).points, explanation: ans.explanation, count: n, percentage: total ? n / total * 100 : 0 }; }).sort((x, y) => y.points - x.points || x.canonical.localeCompare(y.canonical)) }; }) };
+      return { attemptId: a.id, packId: pack.id, title: pack.title, isOfficial: this.eligible(d,a), scoreStatus:a.voidedAt?'removed':a.isOfficial===false?'practice':'official', isGameMaster:!!d.players.find(p=>p.id===a.playerId)?.gameMaster, officialAttemptId: official?.id || null, officialScore: official ? this.scored(d, official).reduce((n, s) => n + s.points, 0) : null, username: d.players.find(p => p.id === a.playerId).username, total: scored.reduce((n, s) => n + s.points, 0), max: 700, ones: scored.filter(s => s.points === 100).length, pendingCount: scored.filter(s => s.reviewStatus === 'pending').length, questions: pack.questions.map(q => { const s = scored.find(s => s.questionId === q.id), c = s.answerId && s.reviewStatus === 'accepted' ? count(q.id, s.answerId) : 0; return { id: q.id, prompt: q.prompt, rawAnswer: s.rawAnswer, canonical: s.canonical, points: s.points, tier: s.tier, reviewStatus: s.reviewStatus, explanation: s.explanation, popularity: { count: c, total, percentage: total ? c / total * 100 : 0 }, answers: q.answers.map(ans => { const n = count(q.id, ans.id); return { id: ans.id, canonical: ans.canonical, tier: ans.tier, points: tierFor(ans.tier).points, explanation: ans.explanation, count: n, percentage: total ? n / total * 100 : 0 }; }).sort((x, y) => y.points - x.points || x.canonical.localeCompare(y.canonical)) }; }) };
     }
     leaderboard(id = null) {
       const d = this.read(), map = new Map();
-      d.attempts.filter(a => a.status === 'completed' && a.isOfficial !== false && (!id || a.packId === id)).forEach(a => { const scored = this.scored(d, a), p = d.players.find(p => p.id === a.playerId); const v = map.get(p.id) || { username: p.username, score: 0, games: 0, ones: 0, pending: 0, marks: [], markTiers: [], lastMarksAt: -1 }; if((a.completedAt||a.createdAt||0)>=v.lastMarksAt){v.marks=scored.map(row=>markFor(row.points));v.markTiers=scored.map(row=>row.tier);v.lastMarksAt=a.completedAt||a.createdAt||0;} v.games++; v.score += scored.reduce((n, s) => n + s.points, 0); v.ones += scored.filter(s => s.points === 100).length; v.pending += scored.filter(s => s.reviewStatus === 'pending').length; map.set(p.id, v); });
+      d.attempts.filter(a => a.status === 'completed' && this.eligible(d,a) && (!id || a.packId === id)).forEach(a => { const scored = this.scored(d, a), p = d.players.find(p => p.id === a.playerId); const v = map.get(p.id) || { username: p.username, score: 0, games: 0, ones: 0, pending: 0, marks: [], markTiers: [], lastMarksAt: -1 }; if((a.completedAt||a.createdAt||0)>=v.lastMarksAt){v.marks=scored.map(row=>markFor(row.points));v.markTiers=scored.map(row=>row.tier);v.lastMarksAt=a.completedAt||a.createdAt||0;} v.games++; v.score += scored.reduce((n, s) => n + s.points, 0); v.ones += scored.filter(s => s.points === 100).length; v.pending += scored.filter(s => s.reviewStatus === 'pending').length; map.set(p.id, v); });
       const rows = [...map.values()].sort((x, y) => y.score - x.score || x.username.localeCompare(y.username));
       let rank = 0; rows.forEach((x, i) => { if (!i || x.score !== rows[i - 1].score) rank = i + 1; x.rank = rank; delete x.lastMarksAt; }); return rows;
+    }
+    scores() {
+      const d=this.read();
+      return d.attempts.filter(a=>a.status==='completed').map(a=>({attemptId:a.id,packId:a.packId,packTitle:d.packs.find(p=>p.id===a.packId)?.title,username:d.players.find(p=>p.id===a.playerId)?.username,score:this.scored(d,a).reduce((n,s)=>n+s.points,0),isOfficial:a.isOfficial!==false,removed:!!a.voidedAt,reason:a.voidReason||'',completedAt:a.completedAt})).sort((a,b)=>b.completedAt-a.completedAt);
+    }
+    deleteScore(id,reason='Removed by Game Master') {
+      const d=this.read(),a=d.attempts.find(a=>a.id===id);
+      if(!a || a.status!=='completed')throw new Error('Completed score not found.');
+      if(!a.voidedAt){a.voidedAt=this.clock();a.voidReason=requireText(reason,500);d.audit.push({action:'score_removed',attemptId:id,at:this.clock(),reason:a.voidReason});this.write(d);}
+      return {ok:true};
     }
     get(id) { const p = this.read().packs.find(p => p.id === id && !p.deletedAt); if (!p) throw new Error('Pack not found.'); return clone(p); }
     save(input) {
@@ -296,17 +309,24 @@
       getResults(id) { return call('council_results', { p_attempt_id: id }, () => local.results(id)); },
       leaderboard(id = null) { return call('council_leaderboard', { p_pack_id: id }, () => local.leaderboard(id)); },
       async adminLogin(email, password) {
-        if (!config) return { id: 'local-host', username: 'Game Master', isAdmin: true };
+        if (!config) {
+          let profile=local.profile();if(!profile)profile=local.enter('Game Master');
+          const d=local.read(),p=d.players.find(p=>p.id===profile.id);p.gameMaster=true;
+          d.attempts.filter(a=>a.playerId===p.id).forEach(a=>a.isOfficial=false);local.write(d);
+          storage.setItem('councillion.local-admin',p.id);return local.profile();
+        }
         storeSession(await auth('token?grant_type=password', { email, password }), true);
         let p; try { p = await rpc('council_profile'); } catch (e) { storage.removeItem(sessionKey(true)); throw e; }
         if (!p?.isAdmin) { storage.removeItem(sessionKey(true)); throw new Error('This account is not a Game Master. Ask the owner to grant access in Supabase.'); } return p;
       },
-      async adminLogout() { storage.removeItem(sessionKey(true)); },
+      async adminLogout() { storage.removeItem(sessionKey(true)); storage.removeItem('councillion.local-admin'); },
       adminList() { return call('council_packs', { p_admin: true }, () => local.list(true)); },
       adminGet(id) { return call('council_admin_get', { p_pack_id: id }, () => local.get(id)); },
       adminSave(pack) { return call('council_admin_save', { p_pack: pack }, () => local.save(pack)); },
       adminVisibility(id,published) { return call('council_admin_visibility',{p_pack_id:id,p_published:published},()=>local.visibility(id,published)); },
       adminDelete(id) { return call('council_admin_delete',{p_pack_id:id},()=>local.deletePack(id)); },
+      adminScores() { return call('council_admin_scores', {}, () => local.scores()); },
+      adminDeleteScore(id,reason='Removed by Game Master') { return call('council_admin_delete_score',{p_attempt_id:id,p_reason:reason},()=>local.deleteScore(id,reason)); },
       adminReviews() { return call('council_reviews', {}, () => local.reviews()); },
       adminReview(x) { return call('council_review', { p_submission_id: x.submissionId, p_answer_id: x.answerId || null, p_reject: !!x.reject, p_override_points: x.overridePoints ?? null, p_note: x.note || '', p_new_answer: x.newAnswer || null, p_apply_to_matching: x.applyToMatching !== false }, () => local.review(x)); },
       adminRegradeAnswer(x) { return call('council_regrade_answer', { p_answer_id: x.answerId, p_tier: x.tier, p_explanation: x.explanation || '' }, () => local.regrade(x)); },

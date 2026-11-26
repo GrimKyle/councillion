@@ -1,5 +1,7 @@
 # Councillion
 
+**Updating the existing public site? Follow [LAUNCH-UPDATE.md](LAUNCH-UPDATE.md) first.** It includes the database migration and upload order for the latest animation, alias confirmation and score-control update.
+
 An actual playable pack-based trivia website for The Council. Seven questions per pack, 25 seconds per question, six manually assigned rarity tiers, and a maximum of 700 points. No AI-generated trivia or AI scoring; the Game Master writes the content.
 
 ## Open the website now
@@ -190,3 +192,11 @@ This is a frontend update; no new SQL migration is required. Real iPhone Safari 
 Open **Game Master → Paste a pack**. Paste seven `Q1:` through `Q7:` blocks, with each question's answer list directly below it. Answer rows use `Answer | points | aliases separated by ; | Councillion subtitle`. A bare answer explicitly defaults to Dino (10). A plain numbered list of seven prompts also works and creates a draft with empty answer lists. Download the text scaffold from the dialog, or use `pack-template.txt`.
 
 You can give ChatGPT your supplied questions, answer lists and point tiers and request a Councillion text pack. Paste its returned block directly, including optional text code fences, or upload its `.txt`/JSON file. CSV and TSV still work. Nothing is published automatically. A malformed paste shows its error inside the import form and keeps your text intact. See `BULK-IMPORT.md` for the full grammar.
+
+### Owner password recovery
+
+Deploy `reset-password.html`, `password-reset.js`, the updated `app.js` and `build.py`. The build copies the new recovery page and script alongside config.js/styles.css; your existing GitHub repository variables supply its public backend settings.
+
+In Supabase → Authentication → URL Configuration set **Site URL** to `https://grimkyle.github.io/councillion/` and add `https://grimkyle.github.io/councillion/reset-password.html` to **Redirect URLs**. Save. Open Game Master → Forgot your password? and request a NEW recovery email. Earlier emails retain their old localhost redirect. Dashboard-generated recovery links that land on the main website are forwarded to the password page before guest initialization. The recovery page removes the fragment from the address bar, validates the recovery session, accepts matching new passwords, and updates that authenticated user's password. It does not grant Game Master membership. Then sign in normally with the new password.
+
+Recovery is for the hosted HTTPS website, not the standalone offline HTML. If your Supabase project uses a custom email template, it must retain a working Supabase verification link; custom PKCE/code or token-hash callback templates are not handled by this plain browser flow. Real Supabase email delivery and password recovery still require a live rehearsal; automated tests use mocked HTTP responses.

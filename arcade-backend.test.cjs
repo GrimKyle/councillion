@@ -53,9 +53,9 @@ test('confirming a proposal after the deadline scores zero; a random confirmatio
  s=await api.confirmAnswer(s.id,q,'something arbitrary','invalid-confirmation');assert.equal(s.feedback.kind,'invalid');assert.equal(s.feedback.message,'"something arbitrary" is invalid. Try again.');assert.equal(s.lockedCount,0);
  advance(25000);s=await api.confirmAnswer(s.id,q,'appel','late-confirmation');assert.equal(s.lastAnswer.points,0);assert.equal(s.lastAnswer.reviewStatus,'timeout');
 });
-test('exact authored aliases lock immediately without requesting typo confirmation',async()=>{
+test('authored aliases propose the canonical answer and require explicit confirmation',async()=>{
  const {api}=setup();const p=await pack(api);await api.enter('Player');let s=await api.begin(p.id);
- s=await api.answer(s.id,s.question.id,'red apple');assert.equal(s.status,'between');assert.equal(s.runScore,100);assert.equal(s.feedback,undefined);
+ const deadline=s.deadline,q=s.question.id; s=await api.answer(s.id,q,'red apple');assert.equal(s.status,'active');assert.equal(s.feedback.kind,'suggestion');assert.equal(s.feedback.candidate,'Apple');assert.equal(s.lockedCount,0);assert.equal(s.deadline,deadline);s=await api.confirmAnswer(s.id,q,'red apple');assert.equal(s.status,'between');assert.equal(s.runScore,100);assert.equal(s.lastAnswer.rawAnswer,'red apple');
 });
 test('resuming consumes the interrupted question once; retry cannot consume the next question',async()=>{
  const {api,advance}=setup();const p=await pack(api);await api.enter('Player');const first=await api.begin(p.id);const q=first.question.id;

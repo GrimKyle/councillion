@@ -874,7 +874,7 @@ main#main { flex: 1; padding-bottom: 76px; }
  .answer-search-toolbar { align-items:stretch;flex-direction:column;gap:0; }.answer-search-toolbar .field { max-width:none; }
 }
 
-/* Keep the scoring ruler in screen space while the bird and fresh tunnel descend. */
+/* Shared avatar, tunnel and answer feedback details. */
 .arcade-scene { --avatar-y:50%; --avatar-px:360px; }
 .arcade-avatar { top:var(--avatar-y); appearance:none; padding:0; margin:0; border:0; border-radius:0; color:inherit; background:transparent; cursor:pointer; pointer-events:auto; }
 .arcade-avatar:focus-visible { outline:2px solid #ffe486; outline-offset:9px; }
@@ -905,7 +905,7 @@ main#main { flex: 1; padding-bottom: 76px; }
 @media(max-width:700px) { .burrow-rank-rail { left:62%; right:3%; gap:4px; }.rail-label { white-space:normal; font-size:7px;letter-spacing:0;max-width:100px; }.rail-label b{margin-left:3px;}.rail-symbol{font-size:9px;}.rail-rule{min-width:4px;}.burrow-side-scale{display:none;} }
 @media(prefers-reduced-motion:reduce) { .is-descending .dig-face,.is-missed .turkey-motion,.is-gobbling .turkey-motion { animation:none; } }
 
-/* The ruler is revealed only after a locked answer; it never moves with terrain. */
+/* Rank visibility is controlled by the current question/reveal phase. */
 .arcade-scene .burrow-rails,.arcade-scene .burrow-side-scale { opacity:0; visibility:hidden; }
 .arcade-scene.is-descending .burrow-rails,.arcade-scene.is-descending .burrow-side-scale { visibility:visible; animation:rank-ruler-in .4s ease-out both; }
 .arcade-scene.is-settled .burrow-rails { visibility:visible; opacity:1; }
@@ -1058,6 +1058,101 @@ html.game-open,html.game-open body { overflow:hidden; overscroll-behavior:none; 
 .dialog-backdrop { top:var(--game-viewport-top,0px);bottom:auto;height:var(--game-viewport-height,100svh);padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));overflow:auto; }
 .dialog-backdrop .dialog { max-height:calc(var(--game-viewport-height,100svh) - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain; }
 
+/* Expedition geometry: terrain, depth ticks and rank lines share world coordinates. */
+.burrow-world { height:calc(100% + 3700px); transform:translate3d(0,calc(-1 * var(--camera-y)),0); }
+.burrow-ground { min-height:3700px; }
+.burrow-tunnel { height:var(--tunnel-depth,22px); }
+.burrow-rails,.burrow-side-scale { transform:translate3d(0,calc(-1 * var(--camera-y)),0); will-change:transform; }
+.burrow-rails { overflow:visible; transition:opacity .28s ease,visibility .28s; }
+.burrow-rank-rail { top:calc(var(--rank-base) + var(--rank-offset)); left:13%;right:8%;gap:9px; height:18px;transform:translateY(-50%)!important; }
+.rail-label { background:#121222c9;padding:2px 6px;white-space:nowrap;max-width:none; }
+.rail-rule { min-width:12px; }
+.burrow-rank-rail.is-crossing .rail-rule { box-shadow:0 0 8px currentColor,0 0 22px currentColor; }
+.burrow-rank-rail.is-crossing .rail-label { color:#fff5df;box-shadow:0 0 18px var(--rank-color); }
+.burrow-side-scale { inset:0 0 auto auto;display:block;height:4000px; }
+.burrow-side-scale span { position:absolute;right:0;width:60px; }
+.arcade-scene.is-question .burrow-rails,.arcade-scene.is-clearing .burrow-rails,.arcade-scene.is-departing .burrow-rails,.arcade-scene.is-ascending .burrow-rails,.arcade-scene.at-surface .burrow-rails { visibility:hidden;opacity:0;animation:none; }
+.arcade-scene.is-departing .arcade-avatar { opacity:1;transition:none; }
+.arcade-avatar { top:0;transform:translate3d(-50%,calc(var(--avatar-px) - 100%),0);will-change:transform;-webkit-tap-highlight-color:transparent; }
+.burrow-answer-tag { position:absolute;left:50%;top:calc(var(--avatar-px) + 17px);max-width:min(72%,440px);padding:10px 17px;transform:translateX(-50%);background:#111525ed;border:1px solid #b4e9ed55;box-shadow:0 4px 0 #09091377,0 0 24px #77c5d41c;color:#e7faff;font-size:clamp(13px,1.7vw,19px);font-weight:bold;text-align:center;overflow-wrap:anywhere;z-index:8;opacity:0; }
+.is-descending .burrow-answer-tag:not(:empty) { opacity:1;transition:opacity .2s .18s; }
+.is-descending .burrow-answer-tag::after { content:' ▼';color:#a6e2e3; }
+.burrow-prompt { border-color:#b0a0c566;background:linear-gradient(145deg,#211c30f5,#101525f2);box-shadow:0 6px 0 #080b1666,0 18px 48px #05081344; }
+.question-ui .burrow-prompt { top:14%;max-height:19%; }
+.burrow-reveal { --tier-color:#b6bfce; }
+.burrow-reveal[data-tier=kalen] { --tier-color:#91e6a7; }
+.burrow-reveal[data-tier=cavaughn] { --tier-color:#6adaff; }
+.burrow-reveal[data-tier=donovan] { --tier-color:#ffab75; }
+.burrow-reveal[data-tier=grimkyle] { --tier-color:#c5a0ff; }
+.burrow-reveal[data-tier=councillion] { --tier-color:#ffe486; }
+.burrow-reveal h1 { display:table;max-width:100%;margin:12px auto;padding:10px 20px;border:1px solid #cfc6e74a;background:#101525e6;box-shadow:0 4px 0 #080b1355; }
+.arcade-scene.is-ascending .turkey-motion { animation:surface-trot .24s ease-in-out infinite alternate; }
+.arcade-scene.is-ascending::after { content:'RETURNING TO THE COUNCIL ↑';position:absolute;bottom:6%;left:10%;right:10%;text-align:center;color:#9de3e1;font-size:11px;letter-spacing:2px;animation:rank-ruler-in .4s ease both; }
+@keyframes surface-trot { to { transform:translateY(-5px) rotate(4deg); } }
+
+/* The expedition ends in the forest where it began, with the answer archive below. */
+.surface-results { position:relative;isolation:isolate;overflow:hidden;min-height:620px;height:min(780px,calc(100svh - 100px));border:1px solid #7d658c66;margin:24px 0 46px;background:#141325; }
+.surface-results .arcade-scene { animation:rank-ruler-in .45s ease both; }
+.surface-results .burrow-coordinates,.surface-results .burrow-side-scale,.surface-results .burrow-vignette { display:none; }
+.surface-results .burrow-sky { background:linear-gradient(#181b3b,#564065 65%,#ab7d7c); }
+.surface-results .burrow-depth-haze { opacity:0; }
+.surface-results .arcade-avatar { z-index:6; }
+.surface-heading { position:absolute;top:9%;left:5%;right:5%;text-align:center;z-index:7;animation:result-enter .6s ease both; }
+.surface-heading>.eyebrow { justify-content:center;color:#ffd28b;letter-spacing:3px; }
+.surface-heading>p:last-child { font-size:12px;color:#d3c8db;overflow-wrap:anywhere; }
+.surface-summary { position:absolute;top:55%;left:50%;transform:translateX(-50%);width:min(680px,calc(100% - 32px));text-align:center;z-index:8;animation:surface-card-in .6s .12s ease both; }
+@keyframes surface-card-in { from {opacity:0;transform:translate(-50%,18px);} to {opacity:1;transform:translate(-50%,0);} }
+.surface-summary>.eyebrow { justify-content:center;font-size:clamp(13px,2.4vw,22px);color:#f7e7c7;margin-bottom:4px; }
+.surface-summary>.eyebrow::before { display:none; }
+.surface-total { display:flex;align-items:baseline;justify-content:center;gap:12px;line-height:1.1; }
+.surface-total>strong { font:clamp(52px,9vw,86px)/1.2 var(--display);color:#ffca83;text-shadow:0 0 40px #ffb46b33; }
+.surface-total>span { font-size:16px;color:#b8a7c8; }
+.surface-marks { display:flex;justify-content:center;gap:7px;margin:12px 0;font-size:19px; }
+.surface-mode { font-size:11px;color:#d1c5d9;line-height:1.7; }
+.surface-summary .section-actions { justify-content:center;gap:12px;margin:18px 0 12px; }
+.surface-summary .hint { margin:0;font-size:10px; }
+.score-moderation { margin:48px 0;padding-top:32px;border-top:1px solid var(--border,#534359); }
+.score-moderation>.section-heading { align-items:center; }
+.score-moderation .field { margin:0;min-width:180px;max-width:100%; }
+.moderation-list { display:grid;gap:10px;margin-top:22px; }
+.moderation-row { display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px;border:1px solid #67536e77;background:#231b2a66; }
+.moderation-row>div { min-width:0;overflow-wrap:anywhere; }
+.moderation-row p { margin:5px 0 8px;font-size:12px;color:#c4b8cb; }
+.moderation-row>button { flex-shrink:0; }
+
+@media(max-width:700px) {
+ .burrow-rank-rail { left:4%;right:3%;gap:5px; }
+ .rail-label { font-size:8px;letter-spacing:.3px;padding:2px 4px; }
+ .rail-label b { margin-left:5px; }
+ .burrow-side-scale { display:none; }
+ .question-ui .burrow-prompt { top:auto;max-height:42%; }
+ .burrow-answer-tag { max-width:86%;padding:9px 13px;font-size:14px; }
+ .result-ui .burrow-reveal { top:13%;max-height:34%; }
+ .answer-suggestion .button { overflow-wrap:anywhere;line-height:1.4; }
+ .surface-results { margin:12px -10px 32px;min-height:650px;height:calc(100svh - 88px); }
+ .surface-results .surface-heading { top:8%; }
+ .surface-results .council-hut { left:8%; }
+ .surface-summary { top:54%; }
+ .surface-total>strong { font-size:64px; }
+ .surface-mode { font-size:10px; }
+ .surface-summary .section-actions { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 8px; }
+ .surface-summary .section-actions .button { padding:12px 7px;font-size:10px;min-height:46px; }
+ .surface-summary .section-actions .text-button { grid-column:1/-1;min-height:32px; }
+ .score-moderation .section-heading { align-items:stretch;flex-direction:column;gap:16px; }
+ .moderation-row { padding:14px;gap:10px; }
+ .moderation-row>button { max-width:110px;white-space:normal;min-height:46px; }
+}
+@media(max-height:520px) and (orientation:landscape) {
+ .question-ui .burrow-prompt { top:auto;max-height:100%; }
+ .result-ui .burrow-reveal { top:20%;left:27%;width:45%;max-height:65%; }
+ .result-ui .reveal-controls { left:auto;right:max(16px,env(safe-area-inset-right));transform:none;bottom:14px;width:40%; }
+ .surface-results { min-height:600px;height:600px; }
+ .burrow-rank-rail { left:7%;right:6%; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .surface-results *,.arcade-scene.is-ascending::after { animation:none!important;transition:none!important; }
+}
+
 </style>
 </head>
 <body>
@@ -1126,7 +1221,9 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
     write(d) { try { this.storage.setItem('councillion.game.v1', JSON.stringify(d)); } catch { throw new Error('This browser could not save the game. Allow site storage or export your packs before continuing.'); } }
     identity() { return this.storage.getItem('councillion.player.v1'); }
     player(d) { return d.players.find(p => p.id === this.identity()) || null; }
-    profile() { const p = this.player(this.read()); return p ? { ...p, isAdmin: false } : null; }
+    profile() { const p = this.player(this.read()); return p ? { ...p, isAdmin: this.storage.getItem('councillion.local-admin') === p.id } : null; }
+    host(d) { return !!this.player(d)?.gameMaster || this.player(d)?.id === this.storage.getItem('councillion.local-admin'); }
+    eligible(d,a) { return a.isOfficial !== false && !a.voidedAt && !d.players.find(p=>p.id===a.playerId)?.gameMaster; }
     enter(name) {
       const username = String(name || '').trim();
       if (Array.from(username).length < 2 || Array.from(username).length > 24 || /[\u0000-\u001f\u007f-\u009f<>&"'\\/\u200b\u200e\u200f\u202a-\u202e\u2066-\u2069]/u.test(username) || !/[\p{L}\p{N}\p{Extended_Pictographic}]/u.test(username)) throw new Error('Use 2–24 visible characters. Emoji are welcome; avoid control characters and HTML symbols.');
@@ -1134,7 +1231,7 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
       if (p && p.username !== username && d.attempts.some(a => a.playerId === p.id)) throw new Error('Your name is locked after starting a pack. Keep your original username.');
       if (d.players.some(x => x.username.toLowerCase() === username.toLowerCase() && x.id !== p?.id)) throw new Error('That username is taken on this browser. Choose another.');
       if (!p) { p = { id: uuid(), username }; d.players.push(p); this.storage.setItem('councillion.player.v1', p.id); } else p.username = username;
-      this.write(d); return { ...p, isAdmin: false };
+      this.write(d); return this.profile();
     }
     needPlayer(d) { const p = this.player(d); if (!p) throw new Error('Enter your username first.'); return p; }
     owned(d, id) { const p = this.needPlayer(d); const a = d.attempts.find(x => x.id === id && x.playerId === p.id); if (!a) throw new Error('This attempt belongs to a different player.'); if (a.status !== 'completed') this.openPack(d,a.packId); return a; }
@@ -1143,7 +1240,7 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
       const p = d.packs.find(x => x.id === a.packId);
       const history = this.scored(d,a).map(row=>({questionId:row.questionId,prompt:p.questions.find(q=>q.id===row.questionId).prompt,rawAnswer:row.rawAnswer,canonical:row.canonical,points:row.points,tier:row.tier,explanation:row.explanation,reviewStatus:row.reviewStatus}));
       const runScore=history.reduce((n,row)=>n+row.points,0);
-      return { id:a.id,packId:p.id,title:p.title,isOfficial:a.isOfficial!==false,status:a.status,position:Math.min(a.submissions.length,6),deadline:a.deadline,serverNow:this.clock(),lockedCount:a.submissions.length,question:a.status==='active'?{id:p.questions[a.submissions.length].id,prompt:p.questions[a.submissions.length].prompt}:null,runScore,depth:runScore*10,hasCouncillion:history.some(row=>row.points===100),history,lastAnswer:history.at(-1)||null };
+      return { id:a.id,packId:p.id,title:p.title,isOfficial:this.eligible(d,a),scoreStatus:a.voidedAt?'removed':a.isOfficial===false?'practice':'official',isGameMaster:!!d.players.find(p=>p.id===a.playerId)?.gameMaster,status:a.status,position:Math.min(a.submissions.length,6),deadline:a.deadline,serverNow:this.clock(),lockedCount:a.submissions.length,question:a.status==='active'?{id:p.questions[a.submissions.length].id,prompt:p.questions[a.submissions.length].prompt}:null,runScore,depth:runScore*10,hasCouncillion:history.some(row=>row.points===100),history,lastAnswer:history.at(-1)||null };
     }
     expire(d, a) { if (a.status === 'active' && this.clock() >= a.deadline) this.lock(d, a, '', true); }
     lock(d, a, text, timeout = false, requestId = uuid()) {
@@ -1156,21 +1253,22 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
     }
     list(admin = false) {
       const d = this.read(), player = this.player(d);
-      return d.packs.filter(p => !p.deletedAt && (admin || p.published)).map(p => { const a = d.attempts.find(x => x.packId === p.id && x.playerId === player?.id && x.isOfficial !== false); const practice = d.attempts.filter(x => x.packId === p.id && x.playerId === player?.id && x.isOfficial === false && x.status !== 'completed').at(-1); return { id: p.id, title: p.title, description: p.description, icon: p.icon, color: p.color, published: p.published, completedCount: d.attempts.filter(a => a.packId === p.id && a.status === 'completed' && a.isOfficial !== false).length, myAttempt: a ? { id: a.id, status: a.status } : null, myPractice: practice ? { id: practice.id, status: practice.status } : null }; });
+      return d.packs.filter(p => !p.deletedAt && (admin || p.published)).map(p => { const a = d.attempts.find(x => x.packId === p.id && x.playerId === player?.id && x.isOfficial !== false); const practice = d.attempts.filter(x => x.packId === p.id && x.playerId === player?.id && x.isOfficial === false && x.status !== 'completed').at(-1); return { id: p.id, title: p.title, description: p.description, icon: p.icon, color: p.color, published: p.published, completedCount: d.attempts.filter(a => a.packId === p.id && a.status === 'completed' && this.eligible(d,a)).length, myAttempt: a ? { id: a.id, status: a.status } : null, myPractice: practice ? { id: practice.id, status: practice.status } : null }; });
     }
     begin(id) {
       const d = this.read(), player = this.needPlayer(d), pack = d.packs.find(p => p.id === id);
       this.openPack(d,id);
-      let a = d.attempts.find(a => a.packId === id && a.playerId === player.id && a.isOfficial !== false);
+      const host=this.host(d);
+      let a = host ? d.attempts.filter(a=>a.packId===id&&a.playerId===player.id&&a.isOfficial===false&&a.status!=='completed').at(-1) : d.attempts.find(a => a.packId === id && a.playerId === player.id && a.isOfficial !== false);
       if (!a && !pack.published) throw new Error('This pack is not published.');
-      if (!a) { a = { id: uuid(), playerId: player.id, packId: id, isOfficial: true, status: 'active', deadline: this.clock() + 25000, submissions: [], createdAt: this.clock() }; d.attempts.push(a); }
+      if (!a) { a = { id: uuid(), playerId: player.id, packId: id, isOfficial: !host, status: 'active', deadline: this.clock() + 25000, submissions: [], createdAt: this.clock() }; d.attempts.push(a); }
       this.expire(d, a); this.write(d); return this.state(d, a);
     }
     practice(id, requestId = uuid()) {
       const d = this.read(), player = this.needPlayer(d), pack = d.packs.find(p => p.id === id);
       if (!pack?.published || pack.deletedAt) throw new Error('This pack is not open for replays.');
       const first = d.attempts.find(a => a.packId === id && a.playerId === player.id && a.isOfficial !== false);
-      if (!first || first.status !== 'completed') throw new Error('Finish your first leaderboard run before replaying.');
+      if (!this.host(d) && (!first || first.status !== 'completed')) throw new Error('Finish your first leaderboard run before replaying.');
       let a = d.attempts.find(a => a.id === requestId);
       if (a && (a.playerId !== player.id || a.packId !== id || a.isOfficial !== false)) throw new Error('Replay request ID already used.');
       if (!a) { a = { id: requestId, playerId: player.id, packId: id, isOfficial: false, status: 'active', deadline: this.clock() + 25000, submissions: [], createdAt: this.clock() }; d.attempts.push(a); }
@@ -1202,7 +1300,7 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
         if(!prior&&a.invalidGuesses.filter(row=>row.questionId===q.id).length<100)a.invalidGuesses.push({id:uuid(),questionId:q.id,rawAnswer:raw,requestId,at:this.clock()});
         this.write(d);return {...this.state(d,a),feedback:{kind:'invalid',message:`"${raw}" is invalid. Try again.`}};
       }
-      if(!confirm && ![match.canonical,...(match.aliases||[])].some(x=>normalize(x)===normalize(raw)))
+      if(!confirm && normalize(match.canonical)!==normalize(raw))
         return {...this.state(d,a),feedback:{kind:'suggestion',candidate:match.canonical,rawAnswer:raw,message:`Did you mean “${match.canonical}”?`}};
       this.lock(d,a,raw,false,requestId);this.write(d);return this.state(d,a);
     }
@@ -1214,17 +1312,27 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
       const d = this.read(), a = this.owned(d, id);
       this.expire(d, a); this.write(d);
       if (a.status !== 'completed') throw new Error('Finish all seven questions before opening results.');
-      const pack = d.packs.find(p => p.id === a.packId), scored = this.scored(d, a), completed = d.attempts.filter(x => x.packId === a.packId && x.status === 'completed' && x.isOfficial !== false);
+      const pack = d.packs.find(p => p.id === a.packId), scored = this.scored(d, a), completed = d.attempts.filter(x => x.packId === a.packId && x.status === 'completed' && this.eligible(d,x));
       const official = completed.find(x => x.playerId === a.playerId);
       const total = completed.length;
       const count = (qid, aid) => completed.filter(x => x.submissions.some(s => s.questionId === qid && s.answerId === aid && s.reviewStatus === 'accepted')).length;
-      return { attemptId: a.id, packId: pack.id, title: pack.title, isOfficial: a.isOfficial !== false, officialAttemptId: official?.id || null, officialScore: official ? this.scored(d, official).reduce((n, s) => n + s.points, 0) : null, username: d.players.find(p => p.id === a.playerId).username, total: scored.reduce((n, s) => n + s.points, 0), max: 700, ones: scored.filter(s => s.points === 100).length, pendingCount: scored.filter(s => s.reviewStatus === 'pending').length, questions: pack.questions.map(q => { const s = scored.find(s => s.questionId === q.id), c = s.answerId && s.reviewStatus === 'accepted' ? count(q.id, s.answerId) : 0; return { id: q.id, prompt: q.prompt, rawAnswer: s.rawAnswer, canonical: s.canonical, points: s.points, tier: s.tier, reviewStatus: s.reviewStatus, explanation: s.explanation, popularity: { count: c, total, percentage: total ? c / total * 100 : 0 }, answers: q.answers.map(ans => { const n = count(q.id, ans.id); return { id: ans.id, canonical: ans.canonical, tier: ans.tier, points: tierFor(ans.tier).points, explanation: ans.explanation, count: n, percentage: total ? n / total * 100 : 0 }; }).sort((x, y) => y.points - x.points || x.canonical.localeCompare(y.canonical)) }; }) };
+      return { attemptId: a.id, packId: pack.id, title: pack.title, isOfficial: this.eligible(d,a), scoreStatus:a.voidedAt?'removed':a.isOfficial===false?'practice':'official', isGameMaster:!!d.players.find(p=>p.id===a.playerId)?.gameMaster, officialAttemptId: official?.id || null, officialScore: official ? this.scored(d, official).reduce((n, s) => n + s.points, 0) : null, username: d.players.find(p => p.id === a.playerId).username, total: scored.reduce((n, s) => n + s.points, 0), max: 700, ones: scored.filter(s => s.points === 100).length, pendingCount: scored.filter(s => s.reviewStatus === 'pending').length, questions: pack.questions.map(q => { const s = scored.find(s => s.questionId === q.id), c = s.answerId && s.reviewStatus === 'accepted' ? count(q.id, s.answerId) : 0; return { id: q.id, prompt: q.prompt, rawAnswer: s.rawAnswer, canonical: s.canonical, points: s.points, tier: s.tier, reviewStatus: s.reviewStatus, explanation: s.explanation, popularity: { count: c, total, percentage: total ? c / total * 100 : 0 }, answers: q.answers.map(ans => { const n = count(q.id, ans.id); return { id: ans.id, canonical: ans.canonical, tier: ans.tier, points: tierFor(ans.tier).points, explanation: ans.explanation, count: n, percentage: total ? n / total * 100 : 0 }; }).sort((x, y) => y.points - x.points || x.canonical.localeCompare(y.canonical)) }; }) };
     }
     leaderboard(id = null) {
       const d = this.read(), map = new Map();
-      d.attempts.filter(a => a.status === 'completed' && a.isOfficial !== false && (!id || a.packId === id)).forEach(a => { const scored = this.scored(d, a), p = d.players.find(p => p.id === a.playerId); const v = map.get(p.id) || { username: p.username, score: 0, games: 0, ones: 0, pending: 0, marks: [], markTiers: [], lastMarksAt: -1 }; if((a.completedAt||a.createdAt||0)>=v.lastMarksAt){v.marks=scored.map(row=>markFor(row.points));v.markTiers=scored.map(row=>row.tier);v.lastMarksAt=a.completedAt||a.createdAt||0;} v.games++; v.score += scored.reduce((n, s) => n + s.points, 0); v.ones += scored.filter(s => s.points === 100).length; v.pending += scored.filter(s => s.reviewStatus === 'pending').length; map.set(p.id, v); });
+      d.attempts.filter(a => a.status === 'completed' && this.eligible(d,a) && (!id || a.packId === id)).forEach(a => { const scored = this.scored(d, a), p = d.players.find(p => p.id === a.playerId); const v = map.get(p.id) || { username: p.username, score: 0, games: 0, ones: 0, pending: 0, marks: [], markTiers: [], lastMarksAt: -1 }; if((a.completedAt||a.createdAt||0)>=v.lastMarksAt){v.marks=scored.map(row=>markFor(row.points));v.markTiers=scored.map(row=>row.tier);v.lastMarksAt=a.completedAt||a.createdAt||0;} v.games++; v.score += scored.reduce((n, s) => n + s.points, 0); v.ones += scored.filter(s => s.points === 100).length; v.pending += scored.filter(s => s.reviewStatus === 'pending').length; map.set(p.id, v); });
       const rows = [...map.values()].sort((x, y) => y.score - x.score || x.username.localeCompare(y.username));
       let rank = 0; rows.forEach((x, i) => { if (!i || x.score !== rows[i - 1].score) rank = i + 1; x.rank = rank; delete x.lastMarksAt; }); return rows;
+    }
+    scores() {
+      const d=this.read();
+      return d.attempts.filter(a=>a.status==='completed').map(a=>({attemptId:a.id,packId:a.packId,packTitle:d.packs.find(p=>p.id===a.packId)?.title,username:d.players.find(p=>p.id===a.playerId)?.username,score:this.scored(d,a).reduce((n,s)=>n+s.points,0),isOfficial:a.isOfficial!==false,removed:!!a.voidedAt,reason:a.voidReason||'',completedAt:a.completedAt})).sort((a,b)=>b.completedAt-a.completedAt);
+    }
+    deleteScore(id,reason='Removed by Game Master') {
+      const d=this.read(),a=d.attempts.find(a=>a.id===id);
+      if(!a || a.status!=='completed')throw new Error('Completed score not found.');
+      if(!a.voidedAt){a.voidedAt=this.clock();a.voidReason=requireText(reason,500);d.audit.push({action:'score_removed',attemptId:id,at:this.clock(),reason:a.voidReason});this.write(d);}
+      return {ok:true};
     }
     get(id) { const p = this.read().packs.find(p => p.id === id && !p.deletedAt); if (!p) throw new Error('Pack not found.'); return clone(p); }
     save(input) {
@@ -1370,17 +1478,24 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
       getResults(id) { return call('council_results', { p_attempt_id: id }, () => local.results(id)); },
       leaderboard(id = null) { return call('council_leaderboard', { p_pack_id: id }, () => local.leaderboard(id)); },
       async adminLogin(email, password) {
-        if (!config) return { id: 'local-host', username: 'Game Master', isAdmin: true };
+        if (!config) {
+          let profile=local.profile();if(!profile)profile=local.enter('Game Master');
+          const d=local.read(),p=d.players.find(p=>p.id===profile.id);p.gameMaster=true;
+          d.attempts.filter(a=>a.playerId===p.id).forEach(a=>a.isOfficial=false);local.write(d);
+          storage.setItem('councillion.local-admin',p.id);return local.profile();
+        }
         storeSession(await auth('token?grant_type=password', { email, password }), true);
         let p; try { p = await rpc('council_profile'); } catch (e) { storage.removeItem(sessionKey(true)); throw e; }
         if (!p?.isAdmin) { storage.removeItem(sessionKey(true)); throw new Error('This account is not a Game Master. Ask the owner to grant access in Supabase.'); } return p;
       },
-      async adminLogout() { storage.removeItem(sessionKey(true)); },
+      async adminLogout() { storage.removeItem(sessionKey(true)); storage.removeItem('councillion.local-admin'); },
       adminList() { return call('council_packs', { p_admin: true }, () => local.list(true)); },
       adminGet(id) { return call('council_admin_get', { p_pack_id: id }, () => local.get(id)); },
       adminSave(pack) { return call('council_admin_save', { p_pack: pack }, () => local.save(pack)); },
       adminVisibility(id,published) { return call('council_admin_visibility',{p_pack_id:id,p_published:published},()=>local.visibility(id,published)); },
       adminDelete(id) { return call('council_admin_delete',{p_pack_id:id},()=>local.deletePack(id)); },
+      adminScores() { return call('council_admin_scores', {}, () => local.scores()); },
+      adminDeleteScore(id,reason='Removed by Game Master') { return call('council_admin_delete_score',{p_attempt_id:id,p_reason:reason},()=>local.deleteScore(id,reason)); },
       adminReviews() { return call('council_reviews', {}, () => local.reviews()); },
       adminReview(x) { return call('council_review', { p_submission_id: x.submissionId, p_answer_id: x.answerId || null, p_reject: !!x.reject, p_override_points: x.overridePoints ?? null, p_note: x.note || '', p_new_answer: x.newAnswer || null, p_apply_to_matching: x.applyToMatching !== false }, () => local.review(x)); },
       adminRegradeAnswer(x) { return call('council_regrade_answer', { p_answer_id: x.answerId, p_tier: x.tier, p_explanation: x.explanation || '' }, () => local.regrade(x)); },
@@ -1656,21 +1771,30 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
   const timeouts = new Set();
   function later(fn, ms) { let id;id=root.setTimeout(()=>{timeouts.delete(id);fn();},ms);timeouts.add(id);return id; }
   function randomish(i, mult, range) { return (i*mult+17)%range; }
-  function avatarPosition(points) {
-    const stops=[{points:0,y:50},...ranks.map((r,i)=>({points:r.points,y:55+i*5}))];
-    const value=clamp(points,0,100);
-    for(let i=1;i<stops.length;i++){const a=stops[i-1],b=stops[i];if(value<=b.points)return a.y+(b.y-a.y)*(value-a.points)/(b.points-a.points);}
-    return 80;
+  const depthPixels = 4.4; // One score point is ten metres of world depth.
+  const smooth = t => t*t*t*(t*(t*6-15)+10);
+  function surface(stage) { return (stage.clientHeight||700)*.50; }
+  function paint(stage,score,camera) {
+    const height=stage.clientHeight||700,ground=height*.5,feet=ground+score*depthPixels-camera;
+    stage.dataset.score=String(score);stage.dataset.camera=String(camera);
+    stage.style.setProperty('--camera-y',camera.toFixed(2)+'px');
+    stage.style.setProperty('--surface-y',ground.toFixed(2)+'px');
+    stage.style.setProperty('--avatar-y',(feet/height*100).toFixed(3)+'%');
+    stage.style.setProperty('--avatar-px',feet.toFixed(2)+'px');
+    stage.dataset.avatarY=String(feet/height*100);
+    stage.style.setProperty('--tunnel-depth',(Math.max(0,score)*depthPixels+22).toFixed(2)+'px');
+    stage.style.setProperty('--depth-shade',String(Math.min(.7,score/1100)));
+    stage.style.setProperty('--rank-base',(ground+(Number(stage.dataset.baseScore)||0)*depthPixels).toFixed(2)+'px');
   }
-  function placeAvatar(stage, points) { placeAvatarY(stage,avatarPosition(points)); }
-  function placeAvatarY(stage, y) {
-    stage.dataset.avatarY=String(y);
-    stage.style.setProperty('--avatar-y',y+'%');
-    stage.style.setProperty('--avatar-px',(y/100*(stage.clientHeight||700)).toFixed(2)+'px');
+  function phase(stage,value) {
+    stage.dataset.phase=value;
+    for(const [name,active] of Object.entries({'is-question':value==='thinking','is-descending':value==='descending','is-settled':value==='reveal','is-ascending':value==='ascending','at-surface':value==='surface'}))
+      stage.classList.toggle(name,active);
+    stage.querySelector('.burrow-rails')?.setAttribute?.('aria-hidden',String(!['descending','reveal'].includes(value)));
   }
   function scene(opts={}) {
     const score=clamp(opts.score,0,700), gold=!!opts.gold;
-    const phase=['thinking','descending','reveal'].includes(opts.phase)?opts.phase:'thinking';
+    const phase=['thinking','descending','reveal','ascending','surface'].includes(opts.phase)?opts.phase:'thinking';
     const entrance=arriving&&phase==='thinking';arriving=false;
     const stars=Array.from({length:50},(_,i)=>`<i class="burrow-star" style="left:${randomish(i,73,100)}%;top:${randomish(i,41,85)}%;--twinkle:${1+i%5}s"></i>`).join('');
     const trees=Array.from({length:19},(_,i)=>`<i class="burrow-tree" style="left:${i*6-4}%;--tree-h:${90+randomish(i,53,120)}px;--tree-w:${40+randomish(i,19,34)}px"></i>`).join('');
@@ -1678,23 +1802,31 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
     const gems=Array.from({length:48},(_,i)=>`<i class="burrow-crystal crystal-${i%3}" style="left:${randomish(i,37,96)+2}%;top:${660+randomish(i,71,2200)}px;--gem-size:${10+i%4*4}px;--gem-delay:${i%7*.4}s"></i>`).join('');
     const dust=Array.from({length:26},(_,i)=>`<i style="--dust-x:${(i%2?-1:1)*(18+i%7*14)}px;--dust-y:${-12-i%6*10}px;--dust-delay:${i%8*.075}s;--dust-color:${['#e9b36f','#b78154','#82708f','#e9d4a8'][i%4]}"></i>`).join('');
     const earned=ranks.find(r=>r.id===opts.tier)?.points||0;
-    const rails=ranks.map((r,i)=>`<div class="burrow-rank-rail${opts.phase==='reveal'&&earned>=r.points?' is-passed':''}${opts.phase==='reveal'&&r.id===opts.tier?' is-winning':''}" data-rank="${r.id}" data-points="${r.points}" style="--rank-color:${r.color};--rail-y:${55+i*5}%"><span class="rail-symbol">${i===5?'♛':'◆'}</span><span class="rail-rule"></span><span class="rail-label">${r.name} <b>+${r.points}</b></span></div>`).join('');
-    return `<div class="arcade-scene${gold?' is-gold':''}${phase==='thinking'?' is-question':''}${entrance?' is-arriving':''}${phase==='reveal'?' is-settled':''}${phase==='reveal'&&earned===100?' gold-burst':''}" data-phase="${phase}" data-score="${score}" style="--avatar-y:${avatarPosition(opts.phase==='reveal'?earned:0)}%;--camera-y:${score*4.4}px;--depth-shade:${Math.min(.72,score/1100)}"><div class="burrow-sky">${stars}<div class="burrow-moon"></div></div><div class="burrow-world"><div class="burrow-forest far-forest">${trees}</div><div class="burrow-forest near-forest">${trees}</div><div class="council-hut"><i class="hut-roof"></i><i class="hut-body"></i><i class="hut-window"></i><i class="hut-door"></i><span>THE COUNCIL</span></div><div class="burrow-ground"><div class="ground-grass"></div><div class="soil-layer soil-loam">${roots}</div><div class="soil-layer soil-shale"></div><div class="soil-layer soil-amethyst"></div><div class="soil-layer soil-abyss"></div>${gems}<div class="burrow-tunnel"></div><div class="ancient-tablet tablet-one">THE OBVIOUS<br>STAYS ABOVE.</div><div class="ancient-tablet tablet-two">ONLY THE<br>COUNCIL KNOWS.</div></div></div><div class="burrow-depth-haze"></div><div class="burrow-rails" aria-hidden="${phase==='thinking'}">${rails}</div><button type="button" data-action="gobble" aria-label="Make the turkey gobble" class="arcade-avatar${gold?' is-gold':''}"><span class="gobble-bubble" aria-live="polite"></span><span class="dig-face" aria-hidden="true"></span><div class="turkey-aura"></div><div class="turkey-motion">${opts.turkeySVG||''}</div><div class="turkey-footsteps"><i></i><i></i></div><div class="turkey-dust">${dust}</div><div class="gold-sparkles">${Array.from({length:12},(_,i)=>`<i style="--spark-x:${Math.cos(i*Math.PI/6)*105}px;--spark-y:${Math.sin(i*Math.PI/6)*85}px;--spark-delay:${i*.035}s"></i>`).join('')}</div></button><div class="burrow-impact"></div><div class="burrow-side-scale">${Array.from({length:9},(_,i)=>`<span>${Math.round((score*10+i*100)/100)*100}m</span>`).join('')}</div><div class="burrow-coordinates"><span>COUNCIL EXPEDITION</span><span data-arcade-depth>${Math.round(score*10).toLocaleString()}m BELOW THE ORDINARY</span></div><div class="burrow-vignette"></div></div>`;
+    const rails=ranks.map((r,i)=>`<div class="burrow-rank-rail${opts.phase==='reveal'&&earned>=r.points?' is-passed':''}${opts.phase==='reveal'&&r.id===opts.tier?' is-winning':''}" data-rank="${r.id}" data-points="${r.points}" style="--rank-color:${r.color};--rank-offset:${Math.round(r.points*depthPixels)}px"><span class="rail-symbol">${i===5?'♛':'◆'}</span><span class="rail-rule"></span><span class="rail-label">${r.name} <b>+${r.points}</b></span></div>`).join('');
+    return `<div class="arcade-scene${gold?' is-gold':''}${phase==='thinking'?' is-question':''}${entrance?' is-arriving':''}${phase==='reveal'?' is-settled':''}${phase==='reveal'&&earned===100?' gold-burst':''}" data-phase="${phase}" data-attempt-id="${escape(opts.attemptId||'')}" data-score="${score}" data-base-score="${Number(opts.baseScore)||0}" style="--avatar-y:50%;--camera-y:${score*4.4}px;--depth-shade:${Math.min(.72,score/1100)}"><div class="burrow-sky">${stars}<div class="burrow-moon"></div></div><div class="burrow-world"><div class="burrow-forest far-forest">${trees}</div><div class="burrow-forest near-forest">${trees}</div><div class="council-hut"><i class="hut-roof"></i><i class="hut-body"></i><i class="hut-window"></i><i class="hut-door"></i><span>THE COUNCIL</span></div><div class="burrow-ground"><div class="ground-grass"></div><div class="soil-layer soil-loam">${roots}</div><div class="soil-layer soil-shale"></div><div class="soil-layer soil-amethyst"></div><div class="soil-layer soil-abyss"></div>${gems}<div class="burrow-tunnel"></div><div class="ancient-tablet tablet-one">THE OBVIOUS<br>STAYS ABOVE.</div><div class="ancient-tablet tablet-two">ONLY THE<br>COUNCIL KNOWS.</div></div></div><div class="burrow-depth-haze"></div><div class="burrow-rails" aria-hidden="${phase==='thinking'}">${rails}</div><button type="button" data-action="gobble" aria-label="Make the turkey gobble" class="arcade-avatar${gold?' is-gold':''}"><span class="gobble-bubble" aria-live="polite"></span><span class="dig-face" aria-hidden="true"></span><div class="turkey-aura"></div><div class="turkey-motion">${opts.turkeySVG||''}</div><div class="turkey-footsteps"><i></i><i></i></div><div class="turkey-dust">${dust}</div><div class="gold-sparkles">${Array.from({length:12},(_,i)=>`<i style="--spark-x:${Math.cos(i*Math.PI/6)*105}px;--spark-y:${Math.sin(i*Math.PI/6)*85}px;--spark-delay:${i*.035}s"></i>`).join('')}</div></button><div class="burrow-answer-tag" aria-hidden="true"></div><div class="burrow-impact"></div><div class="burrow-side-scale">${Array.from({length:75},(_,i)=>`<span data-depth="${i*100}" style="top:calc(var(--surface-y) + ${i*44}px)">${(i*100).toLocaleString()}m</span>`).join('')}</div><div class="burrow-coordinates"><span>COUNCIL EXPEDITION</span><span data-arcade-depth>${Math.round(score*10).toLocaleString()}m BELOW THE ORDINARY</span></div><div class="burrow-vignette"></div></div>`;
   }
-  function mount(element) {
+  function mount(element,opts) {
     const target=element?.matches?.('.arcade-scene')?element:element?.querySelector?.('.arcade-scene');
-    if (target!==mounted) { stopAnimation(); mounted=target||null; }
-    if (!mounted) return;
-    resize();
-    mounted.style?.setProperty('--camera-y',(Number(mounted.dataset.score)||0)*4.4+'px');
-    const winning=mounted.querySelector('.burrow-rank-rail.is-winning');
-    placeAvatar(mounted,winning?Number(winning.dataset.points):0);
+    const fresh=target!==mounted;
+    if(fresh) { stopAnimation();mounted=target||null; }
+    if(!mounted)return;
+    if(opts) {
+      mounted.dataset.baseScore=String(opts.baseScore||0);
+      phase(mounted,opts.phase||'thinking');
+      if(opts.phase==='thinking')mounted.classList.remove('is-clearing','is-departing','gold-burst');
+      mounted.classList.toggle('is-gold',!!opts.gold);
+      mounted.querySelector('.arcade-avatar')?.classList.toggle('is-gold',!!opts.gold);
+      if(opts.phase==='thinking'||opts.phase==='surface')for(const node of mounted.querySelectorAll('.burrow-rank-rail'))node.classList.remove('is-passed','is-winning');
+    }
+    const score=opts?.score??(Number(mounted.dataset.score)||0);
+    // Keep the final camera/feet position when the result UI is inserted.
+    const camera=fresh?Math.max(0,score*depthPixels):(Number(mounted.dataset.camera)||0);
+    paint(mounted,score,camera);
   }
   function resize(){
     if(!mounted)return;
-    const h=mounted.clientHeight||700;
-    mounted.style.setProperty('--surface-y',Math.round(h*.5)+'px');
-    placeAvatarY(mounted,Number(mounted.dataset.avatarY)||50);
+    const score=Number(mounted.dataset.score)||0;
+    paint(mounted,score,Number(mounted.dataset.camera)||0);
   }
   function stopAnimation() {
     if(raf!=null){root.cancelAnimationFrame?.(raf);raf=null;}
@@ -1705,14 +1837,14 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
     if(!audio){const C=root.AudioContext||root.webkitAudioContext;if(C){audio=new C();master=audio.createGain();master.gain.value=enabled?1:0;master.connect(audio.destination);}}
     return audio;
   }
-  function unlockAudio() { try{const c=ensureAudio();if(c?.state==='suspended')c.resume().catch(()=>{});}catch(_){} }
+  function unlockAudio() { try{const c=ensureAudio();if(c&&c.state!=='running')c.resume().catch(()=>{});}catch(_){} }
   function tone(frequency, start, duration, type='square', volume=.035, slide) {
     if(!enabled)return;
     try{const c=ensureAudio();if(!c||c.state!=='running')return;const o=c.createOscillator(),g=c.createGain();
       o.type=type;o.frequency.setValueAtTime(frequency,c.currentTime+start);
       if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(20,slide),c.currentTime+start+duration);
       g.gain.setValueAtTime(.0001,c.currentTime+start);g.gain.exponentialRampToValueAtTime(volume,c.currentTime+start+.012);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+start+duration);
-      o.connect(g);g.connect(master||c.destination);o.start(c.currentTime+start);o.stop(c.currentTime+start+duration+.025);
+      o.connect(g);g.connect(master||c.destination);o.onended=()=>{o.disconnect?.();g.disconnect?.();};o.start(c.currentTime+start);o.stop(c.currentTime+start+duration+.025);
     }catch(_){}
   }
   // Two quiet, throaty bird calls synthesized locally. No speech service or voice API.
@@ -1753,65 +1885,83 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
     if(kind==='timeout'){[220,185,130.81].forEach((n,i)=>tone(n,i*.09,.16,'triangle',.05));return;}
     if(kind==='lock'){tone(880,0,.055,'square',.025);tone(440,.035,.08,'triangle',.04);return;}
     if(kind==='descent'){tone(130.81,0,.55,'triangle',.06,38);[196,261.63,329.63,392].forEach((n,i)=>tone(n,.07+i*.07,.13,'square',.018));return;}
-    if(kind==='tier'){tone(rank.note,0,.15,'square',.03);tone(rank.note*1.5,.065,.22,'triangle',.055);return;}
+    if(kind==='tier'){tone(rank.note,0,.14,'sine',.035);tone(rank.note*2,.05,.28,'sine',.026);return;}
+    if(kind==='surface'){[130.81,164.81,196,261.63,329.63,392,523.25].forEach((n,i)=>tone(n,i*.12,.38,'sine',.022));return;}
+    if(kind==='results'){[261.63,329.63,392,523.25].forEach((n,i)=>tone(n,i*.09,.45,'sine',.026));return;}
     if(kind==='gold'){[523.25,659.25,783.99,1046.5,1318.51,1567.98].forEach((n,i)=>tone(n,i*.085,.24,'square',.025));[523.25,659.25,783.99].forEach(n=>tone(n,.55,.55,'triangle',.035));tone(2093,.82,.32,'sine',.025);return;}
     tone(rank.note,0,.12,'square',.026);tone(rank.note*1.25,.075,.18,'triangle',.04);
   }
   function setSound(value){enabled=!!value;try{if(master)master.gain.setValueAtTime(enabled?1:0,audio.currentTime);}catch(_){}}
   function descend(opts={}) {
-    stopAnimation();
-    const stage=mounted;
-    if(!stage)return Promise.resolve();
+    stopAnimation();const stage=mounted;if(!stage)return Promise.resolve();
     const from=clamp(opts.fromScore,0,700),to=clamp(opts.toScore,from,700),gain=to-from;
-    const duration=reduced()?30:(opts.gold?2350:1850),leadIn=reduced()?0:240;
-    const targetY=avatarPosition(gain);
-    stage.classList.add('is-descending');stage.classList.remove('is-question','is-settled');
-    stage.querySelector('.burrow-rails')?.setAttribute?.('aria-hidden','false');
-    placeAvatar(stage,0);
-    stage.dataset.score=String(from);stage.style.setProperty('--camera-y',from*4.4+'px');
-    const avatar=stage.querySelector('.arcade-avatar');
+    const duration=reduced()?0:1700+gain*8,leadIn=reduced()?0:320;
+    const cameraFrom=Number(stage.dataset.camera)||0;
+    // The bird travels first. The camera follows only once it reaches the lower half.
+    const cameraTo=()=>Math.max(cameraFrom,surface(stage)+to*depthPixels-(stage.clientHeight||700)*.72);
+    stage.dataset.baseScore=String(from);phase(stage,'descending');
+    stage.classList.remove('is-clearing','is-departing');
+    const avatar=stage.querySelector('.arcade-avatar'),tag=stage.querySelector('.burrow-answer-tag');
+    if(tag)tag.textContent=opts.canonical?'“'+opts.canonical+'”':'';
     const railNodes=[...stage.querySelectorAll('.burrow-rank-rail')];
-    railNodes.forEach(n=>n.classList.remove('is-passed','is-winning'));
-    if(gain>0)sound('descent');else sound('timeout');
+    const hud=stage.closest?.('.arcade-shell');
+    const hudDepth=hud?.querySelector?.('#burrow-depth'),hudScore=hud?.querySelector?.('#burrow-score');
+    const depth=stage.querySelector('[data-arcade-depth]');
+    railNodes.forEach(n=>n.classList.remove('is-passed','is-winning'));paint(stage,from,cameraFrom);
+    sound(gain>0?'descent':'timeout');
     return new Promise(resolve=>{
       pending=resolve;let started=null,finished=false;const crossed=new Set();
       function finish(){
-        if(finished)return;finished=true;
-        if(raf!=null){root.cancelAnimationFrame?.(raf);raf=null;}
-        if(stage===mounted){railNodes.filter(n=>Number(n.dataset.points)<=gain).forEach(n=>n.classList.add('is-passed'));stage.style.setProperty('--depth-shade',String(Math.min(.72,to/1100)));placeAvatar(stage,gain);stage.querySelector('.burrow-rank-rail[data-rank="'+opts.tier+'"]')?.classList.add('is-winning');stage.dataset.score=String(to);stage.style.setProperty('--camera-y',to*4.4+'px');stage.classList.remove('is-descending');stage.classList.add('is-settled');if(opts.gold){stage.classList.add('gold-burst','is-gold');avatar?.classList.add('is-gold');sound('gold');later(()=>stage.classList.remove('gold-burst'),1500);}}
+        if(finished)return;finished=true;if(raf!=null){root.cancelAnimationFrame?.(raf);raf=null;}
+        if(stage===mounted){
+          paint(stage,to,cameraTo());phase(stage,'reveal');
+          railNodes.forEach(n=>{if(Number(n.dataset.points)<=gain)n.classList.add('is-passed');if(n.dataset.rank===opts.tier)n.classList.add('is-winning');});
+          if(hudScore)hudScore.textContent=String(to);
+          if(opts.gold){stage.classList.add('gold-burst','is-gold');avatar?.classList.add('is-gold');sound('gold');later(()=>stage.classList.remove('gold-burst'),1400);}
+        }
         if(pending===resolve)pending=null;resolve();
       }
       function frame(now){
-        if(finished)return;
-        if(stage!==mounted||stage.isConnected===false){finish();return;}
+        if(finished)return;if(stage!==mounted||stage.isConnected===false){finish();return;}
         if(started===null)started=now;
-        const progress=clamp((now-started-leadIn)/duration,0,1);
-        const ease=progress*progress*progress*(progress*(progress*6-15)+10);
-        const avatarY=50+(targetY-50)*ease;
-        const current=from+gain*ease;
-        placeAvatarY(stage,avatarY);
-        stage.style.setProperty('--camera-y',(current*4.4).toFixed(2)+'px');
-        stage.style.setProperty('--depth-shade',Math.min(.72,current/1100).toFixed(3));
+        const progress=clamp((now-started-leadIn)/duration,0,1),e=smooth(progress),current=from+gain*e;
+        const camera=cameraFrom+(cameraTo()-cameraFrom)*e;
+        paint(stage,current,camera);
         stage.style.setProperty('--burrow-progress',String(progress));
-        const ticks=[...stage.querySelectorAll('.burrow-side-scale span')];ticks.forEach((tick,i)=>{tick.textContent=(Math.floor(current*10/100)*100+i*100)+'m';});
-        const depth=stage.querySelector('[data-arcade-depth]');if(depth)depth.textContent=Math.round(current*10).toLocaleString()+'m BELOW THE ORDINARY';
-        const shell=stage.closest?.('.arcade-shell');
-        const hudDepth=shell?.querySelector?.('#burrow-depth'),hudScore=shell?.querySelector?.('#burrow-score');
         if(hudDepth)hudDepth.innerHTML=Math.round(current*10).toLocaleString()+'<small>m</small>';
-        if(hudScore)hudScore.textContent=String(Math.round(current));
-        for(const [i,r] of ranks.entries()){
-          if(gain>=r.points&&avatarY>=55+i*5-.001&&!crossed.has(r.id)){
-            crossed.add(r.id);railNodes.find(n=>n.dataset.rank===r.id)?.classList.add('is-passed');sound('tier',r.id);
-          }
+        // Numeric points, like the winning rank, wait for landing.
+        if(depth)depth.textContent=Math.round(current*10).toLocaleString()+'m BELOW THE ORDINARY';
+        for(const rank of ranks)if(current-from>=rank.points-.001&&!crossed.has(rank.id)){
+          crossed.add(rank.id);const rail=railNodes.find(n=>n.dataset.rank===rank.id);
+          rail?.classList.add('is-passed','is-crossing');sound('tier',rank.id);later(()=>rail?.classList.remove('is-crossing'),460);
         }
         if(progress<1)raf=root.requestAnimationFrame(frame);else finish();
       }
-      if(reduced()||!root.requestAnimationFrame){railNodes.filter(n=>Number(n.dataset.points)<=gain).forEach(n=>n.classList.add('is-passed'));finish();}
-      else raf=root.requestAnimationFrame(frame);
-      // Fallback also resolves when a background tab throttles animation frames.
-      later(finish,leadIn+duration+450);
+      if(reduced()||!root.requestAnimationFrame)finish();else raf=root.requestAnimationFrame(frame);
+      if(!finished)later(finish,leadIn+duration+550);
     });
   }
+  function travelCamera(targetScore,duration,returning=false){
+    stopAnimation();const stage=mounted;if(!stage)return Promise.resolve();
+    const score=Number(stage.dataset.score)||0,from=Number(stage.dataset.camera)||0,to=targetScore*depthPixels;
+    const depth=stage.closest?.('.arcade-shell')?.querySelector?.('#burrow-depth');
+    if(returning)phase(stage,'ascending');else stage.classList.add('is-departing');
+    if(returning)sound('surface');
+    return new Promise(resolve=>{
+      pending=resolve;let started=null,finished=false;
+      function finish(){if(finished)return;finished=true;if(raf!=null){root.cancelAnimationFrame?.(raf);raf=null;}
+        if(stage===mounted){paint(stage,returning?0:score,to);if(returning){phase(stage,'surface');if(depth)depth.innerHTML='0<small>m</small>';}}
+        if(pending===resolve)pending=null;resolve();}
+      function frame(now){if(stage!==mounted||stage.isConnected===false){finish();return;}if(started===null)started=now;
+        const p=clamp((now-started)/duration,0,1),e=smooth(p);
+        paint(stage,returning?score*(1-e):score,from+(to-from)*e);
+        if(returning&&depth)depth.innerHTML=Math.round(score*(1-e)*10).toLocaleString()+'<small>m</small>';
+        if(p<1)raf=root.requestAnimationFrame(frame);else finish();}
+      if(reduced()||!root.requestAnimationFrame)finish();else raf=root.requestAnimationFrame(frame);
+      if(!finished)later(finish,duration+450);
+    });
+  }
+  function returnToSurface(){return travelCamera(0,2600,true);}
   function dismissQuestion(){
     stopAnimation();const stage=mounted;if(!stage)return Promise.resolve();
     stage.classList.add('is-clearing');stage.closest?.('.playing-arcade')?.classList.add('is-clearing-ui');
@@ -1826,12 +1976,7 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
       later(settle,reduced()?0:viewport?320:220);
     });
   }
-  function prepareNext(){
-    stopAnimation();arriving=true;
-    const stage=mounted;if(!stage||reduced())return Promise.resolve();
-    stage.classList.add('is-departing');
-    return new Promise(resolve=>{pending=resolve;later(()=>{if(pending===resolve)pending=null;resolve();},220);});
-  }
+  function prepareNext(){arriving=true;return travelCamera(Number(mounted?.dataset.score)||0,560);}
   function miss(){
     stopAnimation();const stage=mounted;if(!stage)return Promise.resolve();
     stage.classList.add('is-missed');sound('timeout');
@@ -1844,7 +1989,7 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
     later(()=>{if(stage===mounted){stage.classList.remove('is-gobbling');if(bubble)bubble.textContent='';}},1100);
   }
   function destroy(){stopAnimation();mounted=null;}
-  const api={scene,mount,resize,descend,dismissQuestion,prepareNext,miss,gobble,sound,unlockAudio,setSound,destroy,ranks};
+  const api={scene,mount,resize,descend,dismissQuestion,prepareNext,returnToSurface,miss,gobble,sound,unlockAudio,setSound,destroy,ranks};
   root.CouncilArcade=api;
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
@@ -1865,7 +2010,7 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
     { id: 'dino', name: 'Dino', points: 10 }
   ];
   const S = { screen: 'home', packs: [], profile: null, game: null, results: null,
-    board: [], boardPack: '', editor: null, review: [], reviewFilter: 'all', adminPacks: [], busy: false,
+    board: [], boardPack: '', scores: [], scoreError: '', scoreFilter: '', sceneOptions:null, returning:false, editor: null, review: [], reviewFilter: 'all', adminPacks: [], busy: false,
     error: '', notice: '', dialog: null, afterName: null, clockOffset: 0,
     sound: readStore('councillion.sound', 'on') === 'on', timerRequest: false,
     editorQuestion: 0, savedAnswerIds: new Set(), lastFocus: null, introDone: false, animating:false, preserveQuestion:false, animationFrom:0, animationGoldBefore:false, invalid:'', suggestion:null, search:'' };
@@ -1899,7 +2044,10 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
   }
   function render() {
     const answerWasFocused=document.activeElement?.id==='answer';
-    window.CouncilArcade?.destroy();
+    const previousScene=app.querySelector?.('.arcade-scene');
+    const sceneId=S.screen==='game'?S.game?.id:S.screen==='results'?S.results?.attemptId:null;
+    const keepScene=previousScene&&sceneId&&previousScene.dataset.attemptId===sceneId;
+    if(!keepScene)window.CouncilArcade?.destroy();
     document.documentElement?.classList?.toggle('game-open',S.screen==='game');
     const screen = ({home: homeView, packs: packsView, leaderboard: leaderboardView, game: gameView, results: resultsView, admin: adminView, editor: editorView, how: howView})[S.screen] || homeView;
     app.innerHTML = `<div class="app-shell ${S.screen==='game'?`playing-arcade${S.animating?' motion-running':''}`:''}">${header()}<main id="main" class="container" tabindex="-1">${S.error ? `<p class="error-message" role="alert">${e(S.error)}</p>` : ''}${S.notice ? `<p class="success-message" role="status">${e(S.notice)}</p>` : ''}${screen()}</main>${footer()}</div>`;
@@ -1907,7 +2055,7 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
     renderDialog();
     window.CouncilArcade?.setSound(S.sound);
     syncViewport();
-    if(S.screen==='game')window.CouncilArcade?.mount(document.getElementById('arcade-stage')||app);
+    if(['game','results'].includes(S.screen)){const fresh=app.querySelector?.('.arcade-scene');if(keepScene&&fresh)fresh.replaceWith(previousScene);window.CouncilArcade?.mount(app,S.sceneOptions);}
     if(S.screen==='results')filterAnswers(S.search);
     if (S.screen === 'game') {
       updateTimer();
@@ -1929,13 +2077,13 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
     return `<section class="page-intro"><p class="eyebrow">A BRIEFING FROM THE COUNCIL</p><h1 class="section-title">KNOW THE OBSCURE.</h1></section><div class="rules-grid"><section class="rules-card"><span class="rule-number">01</span><h2>Pick a pack.</h2><p>Enter your username and choose a pack of seven questions written by your Game Master.</p></section><section class="rules-card"><span class="rule-number">02</span><h2>Think past the obvious.</h2><p>You have 25 seconds per question. Type one correct answer and lock it in. A rare answer scores more than a common one.</p></section><section class="rules-card"><span class="rule-number">03</span><h2>Meet your judgment.</h2><p>After all seven questions, see your score and every ranked answer. Your first run counts for the leaderboard; afterward, replay as often as you want for fun.</p></section></div><div class="notice"><strong>Correct answers lock in.</strong> Invalid answers let you retry until the same 25 seconds expire. Accepted answers send your turkey deeper; a Councillion transforms it into gold. Full answer lists unlock after question seven. Returning to an interrupted run skips that question for zero.</div><section class="rarity-section"><h2 class="section-title">THE SIX RANKS.</h2><div class="tier-strip">${TIERS.map(t => `<div class="tier-stop" data-tier="${t.id}"><strong>${t.points}</strong><span>${e(t.name)}</span></div>`).join('')}</div></section><button class="button primary" data-action="packs">I’M READY →</button>`;
   }
   function suggestionView() {
-    return S.suggestion?`<div class="answer-suggestion"><button type="button" class="button primary" data-action="confirm-suggestion" ${S.busy?'disabled':''}>YES, USE IT</button><button type="button" class="button secondary" data-action="dismiss-suggestion">KEEP TYPING</button></div>`:'';
+    return S.suggestion?`<div class="answer-suggestion"><button type="button" class="button primary" data-action="confirm-suggestion" ${S.busy?'disabled':''}>YES, USE ${e(S.suggestion.candidate)}</button><button type="button" class="button secondary" data-action="dismiss-suggestion">KEEP TYPING</button></div>`:'';
   }
   function questionView(g,locked) {
     return `<div class="question-ui"><div class="burrow-prompt"><p class="eyebrow">QUESTION ${locked+1} / 7</p><h1>${e(g.question.prompt)}</h1><p>THE RARER THE ANSWER, THE DEEPER THE BURROW.</p></div><form data-form="answer" class="burrow-controls ${S.invalid?'answer-rejected':''}"><div class="burrow-feedback" role="status" aria-live="polite">${e(S.suggestion?`Did you mean “${S.suggestion.candidate}”?`:S.invalid||'Think past your first answer.')}</div><div class="answer-suggestion-slot">${suggestionView()}</div><div class="burrow-input-row"><div class="timer"><span id="timer-value">25</span><small>SEC</small></div><label class="screen-reader-only" for="answer">Your answer</label><input id="answer" class="answer-input" name="answer" type="text" inputmode="text" enterkeyhint="go" autocapitalize="none" autocorrect="off" maxlength="200" autocomplete="off" spellcheck="false" placeholder="Type one answer…" ${S.busy?'disabled':''}><button class="button primary" ${S.busy?'disabled':''}>BURROW ▼</button></div><div class="timer-track"><div id="timer-fill" class="timer-fill"></div></div><p>Invalid guess? Try again. Blank answer skips. The clock keeps ticking.</p></form></div>`;
   }
   function revealView(g,last,locked) {
-    return `<div class="result-ui"><div class="burrow-reveal ${last?.points===100?'is-gold':''}" data-tier="${e(last?.tier||'incorrect')}" role="status" aria-live="polite"><p class="eyebrow">${last?.points===100?'ONE IN A COUNCILLION!':last?.points?e(tierLabel(last.tier,last.points)).toUpperCase():'NO ANSWER · NO DEPTH'}</p><h1>${e(last?.canonical||'THE BURROW WAITS.')}</h1><strong class="burrow-award">+${Number(last?.points||0)} PTS <span>· ${Number(last?.points||0)*10}m DEEPER</span></strong>${last?.explanation?`<p class="burrow-explanation">${e(last.explanation)}</p>`:''}<p>${last?.points===100?'THE COUNCIL HAS SPOKEN.':`${locked} OF 7 ANSWERS LOCKED`}</p></div><div class="burrow-controls reveal-controls"><button class="button primary" data-action="${g.status==='completed'?'finish-results':'next-question'}" ${S.busy?'disabled':''}>${g.status==='completed'?'SEE YOUR RESULTS ▼':'BURROW AGAIN ▼'}</button><p>${g.status==='completed'?'All seven answers are locked.':`Question ${locked+1} of 7 · The next timer starts when you continue.`}</p></div></div>`;
+    return `<div class="result-ui"><div class="burrow-reveal ${last?.points===100?'is-gold':''}" data-tier="${e(last?.tier||'incorrect')}" role="status" aria-live="polite"><p class="eyebrow">${last?.points===100?'ONE IN A COUNCILLION!':last?.points?e(tierLabel(last.tier,last.points)).toUpperCase():'NO ANSWER · NO DEPTH'}</p><h1>${e(last?.canonical||'THE BURROW WAITS.')}</h1><strong class="burrow-award">+${Number(last?.points||0)} PTS <span>· ${Number(last?.points||0)*10}m DEEPER</span></strong>${last?.explanation?`<p class="burrow-explanation">${e(last.explanation)}</p>`:''}<p>${last?.points===100?'THE COUNCIL HAS SPOKEN.':`${locked} OF 7 ANSWERS LOCKED`}</p></div><div class="burrow-controls reveal-controls"><button class="button primary" data-action="${g.status==='completed'?'finish-results':'next-question'}" ${S.busy?'disabled':''}>${g.status==='completed'?'RETURN TO THE COUNCIL ↑':'BURROW AGAIN ▼'}</button><p>${g.status==='completed'?'All seven answers are locked.':`Question ${locked+1} of 7 · The next timer starts when you continue.`}</p></div></div>`;
   }
   function gameView() {
     const g=S.game;if(!g)return '<p>Opening the burrow…</p>';
@@ -1945,9 +2093,10 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
     const score=S.animating?S.animationFrom:Number(g.runScore||0);
     const gold=S.animating?S.animationGoldBefore:!!g.hasCouncillion;
     const sprite=turkey(gold?'gold':active?'thinking':'happy');
-    const scene=window.CouncilArcade?.scene({turkeySVG:sprite,score,tier:last?.tier,gold,phase:S.animating?'descending':active?'thinking':'reveal',question:locked,progress:locked})||`<div class="arcade-scene">${sprite}</div>`;
+    S.sceneOptions={turkeySVG:sprite,attemptId:g.id,score,tier:last?.tier,gold,baseScore:S.animating?score:active?score:Math.max(0,score-Number(last?.points||0)),phase:S.returning?'ascending':S.animating?'descending':active?'thinking':'reveal',question:locked,progress:locked};
+    const scene=window.CouncilArcade?.scene(S.sceneOptions)||`<div class="arcade-scene">${sprite}</div>`;
     const dots=`<div class="burrow-progress" aria-label="${visibleLocked} of 7 completed">${Array.from({length:7},(_,i)=>`<span class="${i<visibleLocked?'done':i===visibleLocked?'current':''}" data-tier="${e(i<visibleLocked?g.history?.[i]?.tier||'':'')}">${i<visibleLocked?'◆':'·'}</span>`).join('')}</div>`;
-    return `<section class="arcade-shell ${S.animating?'is-in-flight':active?'is-answering':'is-result'}" aria-label="Councillion underground arcade">${scene}<div class="burrow-hud"><div class="burrow-meter"><span>DEPTH</span><strong id="burrow-depth">${(score*10).toLocaleString()}<small>m</small></strong></div><div class="burrow-hud-center"><span>${e(g.title)}</span>${dots}<small>${g.isOfficial===false?'REPLAY · FIRST SCORE SAVED':'FIRST RUN · LEADERBOARD ATTEMPT'}</small></div><div class="burrow-meter score-meter"><span>SCORE</span><strong id="burrow-score">${score}</strong></div></div>${S.animating?'<p class="screen-reader-only" role="status">The turkey is burrowing. Your result appears when it stops.</p>':active?questionView(g,locked):revealView(g,last,locked)}${S.animating?'':`<div class="burrow-caption">${gold?'THE GOLDEN COUNCIL TURKEY':'THE COUNCIL’S GREAT BURROW'} · ${locked}/7 QUESTIONS</div>`}</section>`;
+    return `<section class="arcade-shell ${S.animating?'is-in-flight':active?'is-answering':'is-result'}" aria-label="Councillion underground arcade">${scene}<div class="burrow-hud"><div class="burrow-meter"><span>DEPTH</span><strong id="burrow-depth">${(score*10).toLocaleString()}<small>m</small></strong></div><div class="burrow-hud-center"><span>${e(g.title)}</span>${dots}<small>${g.isGameMaster?'GAME MASTER · PRACTICE ONLY':g.scoreStatus==='removed'?'SCORE REMOVED':g.isOfficial===false?'REPLAY · FIRST SCORE SAVED':'FIRST RUN · LEADERBOARD ATTEMPT'}</small></div><div class="burrow-meter score-meter"><span>SCORE</span><strong id="burrow-score">${score}</strong></div></div>${S.animating?'<p class="screen-reader-only" role="status">The turkey is burrowing. Your result appears when it stops.</p>':active?questionView(g,locked):revealView(g,last,locked)}${S.animating?'':`<div class="burrow-caption">${gold?'THE GOLDEN COUNCIL TURKEY':'THE COUNCIL’S GREAT BURROW'} · ${locked}/7 QUESTIONS</div>`}</section>`;
   }
   function patchQuestionFeedback() {
     const form=document.querySelector?.('[data-form="answer"]');
@@ -1983,7 +2132,9 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
     if (!r) return '<p>Opening results…</p>';
     const rows = r.questions || [];
     const golds = rows.filter(q => Number(q.points) === 100);
-    return `<section class="results-hero"><p class="eyebrow">${e(r.title)} · ${e(r.username || S.profile?.username)}</p><h1 class="section-title">THE COUNCIL<br>HAS SPOKEN.</h1><div class="results-score-row"><div class="score-total">${Number(r.total || 0)}<span>/ 700</span></div>${turkey(golds.length ? 'gold' : Number(r.total)>350?'happy':'idle')}</div><p class="section-subtitle">${golds.length ? `${golds.length} One in a Councillion ${golds.length===1?'answer':'answers'}. A performance for the Council archives.` : 'Seven answers. One judgment. See how you got here.'}</p>${Number(r.pendingCount)>0 ? `<p class="notice">${Number(r.pendingCount)} ${Number(r.pendingCount)===1?'answer is':'answers are'} awaiting Game Master review. Your score is provisional and will update after review.</p>` : ''}${r.isOfficial===false ? `<p class="notice">REPLAY SCORE ONLY · Your first-run leaderboard score remains <strong>${Number(r.officialScore||0)}/700</strong>.</p>` : `<p class="notice">FIRST-RUN SCORE · Saved to the leaderboard. You can now replay this pack as often as you like.</p>`}<div class="section-actions"><button class="button primary" data-action="pack-board" data-id="${e(r.packId)}">VIEW LEADERBOARD →</button><button class="button secondary" data-action="share-results">COPY SCORE</button><button class="text-button" data-action="refresh-results">Refresh results ↻</button></div></section>${golds.length ? `<section class="achievement-banner"><div class="achievement-star" aria-hidden="true">♛</div><div><p class="eyebrow">ONE IN A COUNCILLION!</p><h2>THE COUNCIL HAS SPOKEN.</h2>${golds.map(q=>`<p><strong>${e(q.canonical || q.rawAnswer)}</strong>${q.explanation ? ` — ${e(q.explanation)}` : ''}</p>`).join('')}</div><span class="achievement-points">+${golds.length*100}</span></section>` : ''}<section><div class="section-heading"><div><p class="eyebrow">THE FULL PICTURE</p><h2 class="section-title">YOUR SEVEN ANSWERS.</h2></div><p class="hint">Open a question to explore every answer.</p></div><div class="answer-search-toolbar"><label class="field" for="answer-search">SEARCH THE ANSWER ARCHIVE<input id="answer-search" class="input" type="search" placeholder="Search answers, ranks or explanations…" value="${e(S.search)}" autocomplete="off"></label><span id="answer-search-count" role="status" aria-live="polite"></span></div><div class="result-list">${rows.map((q,i) => resultCard(q,i)).join('')}</div></section><div class="section-actions results-bottom"><button class="button primary" data-action="replay" data-id="${e(r.packId)}">REPLAY PACK ↻</button>${r.isOfficial===false?`<button class="button secondary" data-action="official-results" data-id="${e(r.officialAttemptId)}">VIEW FIRST-RUN RESULTS</button>`:''}<button class="button secondary" data-action="packs">BACK TO PACKS →</button></div>`;
+    S.sceneOptions={attemptId:r.attemptId,turkeySVG:turkey(golds.length?'gold':'happy'),score:0,baseScore:0,gold:!!golds.length,phase:'surface'};
+    const resultMode=r.scoreStatus==='removed'?'SCORE REMOVED · This run no longer counts on the leaderboard.':r.isGameMaster?'GAME MASTER PRACTICE · Your score does not enter the leaderboard.':r.isOfficial===false?`REPLAY SCORE ONLY · Your first-run score is ${Number(r.officialScore||0)}/700.`:'FIRST RUN · Your score is saved on the leaderboard.';
+    return `<section class="surface-results" aria-label="Your expedition results">${window.CouncilArcade?.scene(S.sceneOptions)||''}<div class="surface-heading"><p class="eyebrow">BACK AT THE COUNCIL</p><p>${e(r.title)} · ${e(r.username||S.profile?.username)}</p></div><div class="surface-summary"><p class="eyebrow">THE COUNCIL HAS SPOKEN.</p><div class="surface-total"><strong>${Number(r.total||0)}</strong><span>/ 700</span></div><div class="surface-marks" aria-label="Your seven answer scores">${rows.map(q=>`<span title="${e(tierLabel(q.tier,q.points))}: ${Number(q.points||0)} points">${({100:'🟨',85:'🟪',60:'🟧',30:'🟦',15:'🟩',10:'⬜'})[q.points]||'⬛'}</span>`).join('')}</div><p class="surface-mode">${e(resultMode)}</p><div class="section-actions"><button class="button primary" data-action="pack-board" data-id="${e(r.packId)}">LEADERBOARD →</button><button class="button secondary" data-action="share-results">COPY SCORE</button><button class="text-button" data-action="refresh-results">Refresh ↻</button></div><p class="hint">Your seven answers and the full archive are below. ↓</p></div></section>${golds.length ? `<section class="achievement-banner"><div class="achievement-star" aria-hidden="true">♛</div><div><p class="eyebrow">ONE IN A COUNCILLION!</p><h2>THE COUNCIL HAS SPOKEN.</h2>${golds.map(q=>`<p><strong>${e(q.canonical || q.rawAnswer)}</strong>${q.explanation ? ` — ${e(q.explanation)}` : ''}</p>`).join('')}</div><span class="achievement-points">+${golds.length*100}</span></section>` : ''}<section><div class="section-heading"><div><p class="eyebrow">THE FULL PICTURE</p><h2 class="section-title">YOUR SEVEN ANSWERS.</h2></div><p class="hint">Open a question to explore every answer.</p></div><div class="answer-search-toolbar"><label class="field" for="answer-search">SEARCH THE ANSWER ARCHIVE<input id="answer-search" class="input" type="search" placeholder="Search answers, ranks or explanations…" value="${e(S.search)}" autocomplete="off"></label><span id="answer-search-count" role="status" aria-live="polite"></span></div><div class="result-list">${rows.map((q,i) => resultCard(q,i)).join('')}</div></section><div class="section-actions results-bottom"><button class="button primary" data-action="replay" data-id="${e(r.packId)}">REPLAY PACK ↻</button>${r.isOfficial===false&&r.officialAttemptId?`<button class="button secondary" data-action="official-results" data-id="${e(r.officialAttemptId)}">VIEW FIRST-RUN RESULTS</button>`:''}<button class="button secondary" data-action="packs">BACK TO PACKS →</button></div>`;
   }
   function resultCard(q,i) {
     const points = Number(q.points || 0);
@@ -2008,16 +2159,20 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
   }
   function invalidHistoryCard(item){return `<article class="review-card"><p class="eyebrow">${e(item.username)} · INVALID GUESS</p><h3>${e(item.prompt)}</h3><p class="review-answer">“${e(item.rawAnswer)}”</p><p class="hint">Rejected during play. The player could retry until time expired. Saved here for future pack improvements.</p></article>`;}
   function filteredReviews() { return S.reviewFilter==='all'?S.review:S.review.filter(item=>['pending','rejected','invalid_attempt'].includes(item.reviewStatus)); }
+  function scoreControls() {
+    const rows=S.scores.filter(row=>!S.scoreFilter||row.packId===S.scoreFilter);
+    return `<section class="score-moderation"><div class="section-heading"><div><p class="eyebrow">KEEP THE COMPETITION FAIR</p><h2 class="section-title">PLAYER SCORES.</h2></div><label class="field">PACK<select class="select" id="score-pack-filter"><option value="">All packs</option>${S.adminPacks.map(p=>`<option value="${e(p.id)}" ${S.scoreFilter===p.id?'selected':''}>${e(p.title)}</option>`).join('')}</select></label></div><p class="hint">Delete a score to remove it from both leaderboards and answer percentages. The original attempt stays on record; the player cannot replace their first score. Game Master runs are practice.</p>${S.scoreError?`<p class="error-message">${e(S.scoreError)}</p>`:rows.length?`<div class="moderation-list">${rows.map(row=>`<article class="moderation-row"><div><strong>${e(row.username)}</strong><p>${e(row.packTitle)} · ${Number(row.score)}/700</p><span class="badge">${row.removed?'REMOVED':row.isOfficial?'OFFICIAL':'PRACTICE'}</span>${row.reason?`<p class="hint">${e(row.reason)}</p>`:''}</div>${row.isOfficial&&!row.removed?`<button class="button danger small" data-action="delete-score" data-id="${e(row.attemptId)}">DELETE SCORE</button>`:''}</article>`).join('')}</div>`:'<p class="empty-review">No completed scores yet.</p>'}</section>`;
+  }
   function adminView() {
-    if (!isAdmin()) return `<section class="page-intro"><p class="eyebrow">THE OTHER SIDE OF THE TABLE</p><h1 class="section-title">GAME MASTER.</h1><p>Sign in with your authorized Game Master account to manage packs and review answers.</p></section><form data-form="admin-login" class="login-form"><label class="field">Email<input class="input" type="email" name="email" autocomplete="username" required></label><label class="field">Password<input class="input" type="password" name="password" autocomplete="current-password" required></label><button class="button primary" ${S.busy?'disabled':''}>${busyText('ENTER THE CHAMBER →')}</button></form>`;
-    return `<section class="page-intro"><p class="eyebrow">YOU SET THE QUESTIONS. YOU MAKE THE CALL.</p><h1 class="section-title">GAME MASTER.</h1>${!isRemote()?'<p class="notice">Local workspace · Packs, answer keys, and scores stay on this browser. This editor is open locally. Connect your backend for protected administration and shared play.</p>':''}</section><div class="admin-toolbar"><h2 class="section-title">YOUR PACKS.</h2><div class="section-actions"><button class="button primary" data-action="new-pack">+ CREATE PACK</button><label class="button secondary" for="import-pack">UPLOAD PACK</label><button class="button secondary" data-action="bulk-pack">PASTE 7 PROMPTS / PACK</button><button class="button secondary" data-action="refresh-admin">REFRESH</button>${isRemote()?'<button class="text-button" data-action="admin-logout">Sign out</button>':''}</div></div>${S.adminPacks.length?`<div class="admin-pack-list">${S.adminPacks.map(p=>`<article class="admin-pack-row"><div><h3>${e(p.title)}</h3><p>${e(p.description || 'No description yet.')}</p><span class="badge">${p.published?'PUBLIC':'PRIVATE / DRAFT'}</span><span class="hint"> ${Number(p.completedCount||0)} completed</span></div><div class="section-actions"><button class="button secondary small" data-action="edit-pack" data-id="${e(p.id)}">EDIT PACK →</button><button class="text-button" data-action="export-pack" data-id="${e(p.id)}">Export</button><button class="button secondary small" data-action="${p.published?'private-pack':'publish-pack'}" data-id="${e(p.id)}">${p.published?'MAKE PRIVATE':'PUBLISH PACK'}</button><button class="button danger small" data-action="delete-pack" data-id="${e(p.id)}">DELETE</button></div></article>`).join('')}</div>`:'<div class="empty-state"><div class="empty-icon">⚑</div><div><h3>Your first pack starts here.</h3><p>Add seven questions and their accepted answers. Nothing is generated for you: you decide every answer and rank.</p></div><button class="button primary" data-action="new-pack">CREATE PACK →</button></div>'}<section class="review-section"><p class="notice">Scoring is automatic. Nothing needs approval. Browse what players typed to improve future packs; any corrections below are optional.</p><div class="section-heading"><div><p class="eyebrow">THE FINAL WORD IS YOURS</p><h2 class="section-title">ANSWER HISTORY.</h2></div><div class="section-actions"><button class="nav-btn ${S.reviewFilter==='unrecognized'?'active':''}" data-action="review-filter" data-id="unrecognized">Unrecognized only</button><button class="nav-btn ${S.reviewFilter==='all'?'active':''}" data-action="review-filter" data-id="all">All answers</button></div></div>${filteredReviews().length?filteredReviews().map(item=>item.actionable===false?invalidHistoryCard(item):`<article class="review-card"><p class="eyebrow">${e(item.packTitle||'PLAYER SUBMISSION')} · ${e(item.username)}</p><span class="badge">${item.isOfficial===false?'REPLAY · ':''}${e((item.reviewStatus||'pending').toUpperCase())}</span><h3>${e(item.prompt)}</h3><p class="review-answer">“${e(item.rawAnswer)}”</p><details><summary class="text-button">Optional correction</summary><form data-form="review" data-id="${e(item.id)}"><label class="field">Map to an existing answer, or create one<select class="select" name="answerId"><option value="">Create a newly accepted answer below</option>${(item.answers||[]).map(a=>`<option value="${e(a.id)}" ${a.id===item.answerId||a.canonical===item.canonical?'selected':''}>${e(a.canonical)} · ${e(tierLabel(a.tier,a.points))}</option>`).join('')}</select></label><div class="form-grid"><label class="field">Canonical answer<input class="input" name="canonical" value="${e(item.canonical||item.suggestedCanonical||item.rawAnswer)}" maxlength="160" required></label><label class="field">Rank<select class="select" name="tier">${TIERS.map(t=>`<option value="${t.id}">${e(t.name)} · ${t.points}</option>`).join('')}</select></label></div><label class="field">Explanation for a Councillion answer<input class="input" name="explanation" maxlength="1000"></label><div class="form-grid"><label class="field">Optional score override<select class="select" name="overridePoints"><option value="">Use the answer’s assigned rank</option><option value="0">0 points</option>${[...TIERS].reverse().map(t=>`<option value="${t.points}">${t.points} points · ${e(t.name)}</option>`).join('')}</select></label><label class="field">Review note<input class="input" name="note" maxlength="500" placeholder="Optional reason for this correction"></label></div><div class="section-actions"><button class="button primary small">APPLY OPTIONAL CORRECTION</button><button type="button" class="button danger small" data-action="reject-review" data-id="${e(item.id)}">SET ZERO POINTS</button></div></form></details></article>`).join(''):`<p class="empty-review">✓ ${S.reviewFilter==='all'?'No submitted answers yet.':'No unrecognized answers recorded.'}</p>`}</section><section class="import-section"><h2>Bring a pack with you.</h2><p class="hint">Upload a text pack, JSON pack or an Excel-compatible CSV/TSV file. You can also paste a full pack or a list of answers. Imported packs stay private until you publish.</p><label class="button secondary small file-label">UPLOAD TXT / JSON / CSV<input id="import-pack" type="file" accept="text/plain,application/json,text/csv,text/tab-separated-values,.txt,.json,.csv,.tsv" class="screen-reader-only"></label></section>`;
+    if (!isAdmin()) return `<section class="page-intro"><p class="eyebrow">THE OTHER SIDE OF THE TABLE</p><h1 class="section-title">GAME MASTER.</h1><p>Sign in with your authorized Game Master account to manage packs and review answers.</p></section><form data-form="admin-login" class="login-form"><label class="field">Email<input class="input" type="email" name="email" autocomplete="username" required></label><label class="field">Password<input class="input" type="password" name="password" autocomplete="current-password" required></label><button class="button primary" ${S.busy?'disabled':''}>${busyText('ENTER THE CHAMBER →')}</button><p style="margin-top:18px"><a href="reset-password.html">Forgot your password?</a></p></form>`;
+    return `<section class="page-intro"><p class="eyebrow">YOU SET THE QUESTIONS. YOU MAKE THE CALL.</p><h1 class="section-title">GAME MASTER.</h1>${!isRemote()?'<p class="notice">Local workspace · Packs, answer keys, and scores stay on this browser. This editor is open locally. Connect your backend for protected administration and shared play.</p>':''}</section><div class="admin-toolbar"><h2 class="section-title">YOUR PACKS.</h2><div class="section-actions"><button class="button primary" data-action="new-pack">+ CREATE PACK</button><label class="button secondary" for="import-pack">UPLOAD PACK</label><button class="button secondary" data-action="bulk-pack">PASTE 7 PROMPTS / PACK</button><button class="button secondary" data-action="refresh-admin">REFRESH</button>${isRemote()?'<button class="text-button" data-action="admin-logout">Sign out</button>':''}</div></div>${S.adminPacks.length?`<div class="admin-pack-list">${S.adminPacks.map(p=>`<article class="admin-pack-row"><div><h3>${e(p.title)}</h3><p>${e(p.description || 'No description yet.')}</p><span class="badge">${p.published?'PUBLIC':'PRIVATE / DRAFT'}</span><span class="hint"> ${Number(p.completedCount||0)} completed</span></div><div class="section-actions"><button class="button secondary small" data-action="edit-pack" data-id="${e(p.id)}">EDIT PACK →</button><button class="text-button" data-action="export-pack" data-id="${e(p.id)}">Export</button><button class="button secondary small" data-action="${p.published?'private-pack':'publish-pack'}" data-id="${e(p.id)}">${p.published?'MAKE PRIVATE':'PUBLISH PACK'}</button><button class="button danger small" data-action="delete-pack" data-id="${e(p.id)}">DELETE</button></div></article>`).join('')}</div>`:'<div class="empty-state"><div class="empty-icon">⚑</div><div><h3>Your first pack starts here.</h3><p>Add seven questions and their accepted answers. Nothing is generated for you: you decide every answer and rank.</p></div><button class="button primary" data-action="new-pack">CREATE PACK →</button></div>'}${scoreControls()}<section class="review-section"><p class="notice">Scoring is automatic. Nothing needs approval. Browse what players typed to improve future packs; any corrections below are optional.</p><div class="section-heading"><div><p class="eyebrow">THE FINAL WORD IS YOURS</p><h2 class="section-title">ANSWER HISTORY.</h2></div><div class="section-actions"><button class="nav-btn ${S.reviewFilter==='unrecognized'?'active':''}" data-action="review-filter" data-id="unrecognized">Unrecognized only</button><button class="nav-btn ${S.reviewFilter==='all'?'active':''}" data-action="review-filter" data-id="all">All answers</button></div></div>${filteredReviews().length?filteredReviews().map(item=>item.actionable===false?invalidHistoryCard(item):`<article class="review-card"><p class="eyebrow">${e(item.packTitle||'PLAYER SUBMISSION')} · ${e(item.username)}</p><span class="badge">${item.isOfficial===false?'REPLAY · ':''}${e((item.reviewStatus||'pending').toUpperCase())}</span><h3>${e(item.prompt)}</h3><p class="review-answer">“${e(item.rawAnswer)}”</p><details><summary class="text-button">Optional correction</summary><form data-form="review" data-id="${e(item.id)}"><label class="field">Map to an existing answer, or create one<select class="select" name="answerId"><option value="">Create a newly accepted answer below</option>${(item.answers||[]).map(a=>`<option value="${e(a.id)}" ${a.id===item.answerId||a.canonical===item.canonical?'selected':''}>${e(a.canonical)} · ${e(tierLabel(a.tier,a.points))}</option>`).join('')}</select></label><div class="form-grid"><label class="field">Canonical answer<input class="input" name="canonical" value="${e(item.canonical||item.suggestedCanonical||item.rawAnswer)}" maxlength="160" required></label><label class="field">Rank<select class="select" name="tier">${TIERS.map(t=>`<option value="${t.id}">${e(t.name)} · ${t.points}</option>`).join('')}</select></label></div><label class="field">Explanation for a Councillion answer<input class="input" name="explanation" maxlength="1000"></label><div class="form-grid"><label class="field">Optional score override<select class="select" name="overridePoints"><option value="">Use the answer’s assigned rank</option><option value="0">0 points</option>${[...TIERS].reverse().map(t=>`<option value="${t.points}">${t.points} points · ${e(t.name)}</option>`).join('')}</select></label><label class="field">Review note<input class="input" name="note" maxlength="500" placeholder="Optional reason for this correction"></label></div><div class="section-actions"><button class="button primary small">APPLY OPTIONAL CORRECTION</button><button type="button" class="button danger small" data-action="reject-review" data-id="${e(item.id)}">SET ZERO POINTS</button></div></form></details></article>`).join(''):`<p class="empty-review">✓ ${S.reviewFilter==='all'?'No submitted answers yet.':'No unrecognized answers recorded.'}</p>`}</section><section class="import-section"><h2>Bring a pack with you.</h2><p class="hint">Upload a text pack, JSON pack or an Excel-compatible CSV/TSV file. You can also paste a full pack or a list of answers. Imported packs stay private until you publish.</p><label class="button secondary small file-label">UPLOAD TXT / JSON / CSV<input id="import-pack" type="file" accept="text/plain,application/json,text/csv,text/tab-separated-values,.txt,.json,.csv,.tsv" class="screen-reader-only"></label></section>`;
   }
   function blankPack() { return {id:null,title:'',description:'',icon:'turkey',color:'#d38966',published:false,questions:Array.from({length:7},()=>({id:newId(),prompt:'',answers:[{id:newId(),canonical:'',tier:'dino',aliases:[],explanation:''}]}))}; }
   function editorView() {
     const pack = S.editor;
     if (!pack) return '<p>Opening the editor…</p>';
     const i=S.editorQuestion, q=pack.questions[i];
-    return `<section class="page-intro editor-intro"><button class="text-button" data-action="admin">← BACK TO GAME MASTER</button><p class="eyebrow">MAKE THE COUNCIL THINK</p><h1 class="section-title">${pack.id?'EDIT YOUR PACK.':'BUILD A PACK.'}</h1></section><form data-form="pack-editor"><div class="form-grid"><label class="field">Pack title<input class="input" data-pack-field="title" value="${e(pack.title)}" maxlength="80" placeholder="Give your pack a name" required></label><label class="field">Pack icon<select class="select" data-pack-field="icon">${['turkey','crown','game','music','film','globe','food','sport','book','star'].map(icon=>`<option value="${icon}" ${pack.icon===icon?'selected':''}>${e(icon.charAt(0).toUpperCase()+icon.slice(1))}</option>`).join('')}</select></label><label class="field">Description<textarea class="textarea" data-pack-field="description" maxlength="300" placeholder="What are we getting ourselves into?">${e(pack.description)}</textarea></label><label class="field">Pack color<select class="select" data-pack-field="color">${PACK_COLORS.map(color=>`<option value="${color.id}" ${pack.color===color.id?'selected':''}>${e(color.name)}</option>`).join('')}</select></label></div><div class="question-nav" aria-label="Questions">${pack.questions.map((question,index)=>`<button type="button" class="nav-btn ${index===i?'active':''}" data-action="edit-question" data-index="${index}">Q${index+1}${question.prompt.trim()&&question.answers.some(a=>a.canonical.trim())?' ✓':''}</button>`).join('')}</div><section class="editor-question"><div class="question-editor-header"><p class="eyebrow">QUESTION ${i+1} OF 7</p><span class="badge">25 SECONDS</span></div><label class="field">The question<textarea class="textarea question-textarea" data-question-field="prompt" maxlength="500" placeholder="Write the exact question your players will see…">${e(q.prompt)}</textarea></label><div class="section-heading"><div><h2>Accepted answers</h2><p class="hint">Set the rank yourself. Small, unique typos prompt players to confirm the correction. Use comma-separated aliases for equivalent names such as red apple for Apple.</p></div><div class="section-actions"><button type="button" class="button secondary small" data-action="bulk-answers">PASTE ANSWER LIST</button><button type="button" class="button secondary small" data-action="add-answer">+ ADD ANSWER</button></div></div>${pack.id?'<p class="notice">Already played? Use <strong>Apply rarity correction</strong> on a saved answer to update its rank and explanation. Non-overridden historical scores update automatically. Other question content stays frozen once play begins.</p>':''}<div class="answers-editor">${q.answers.map((a,index)=>`<div class="answer-editor" data-tier="${e(a.tier)}"><div class="answer-editor-main"><label class="field">Answer<input class="input" data-answer-field="canonical" data-answer-index="${index}" value="${e(a.canonical)}" maxlength="160" placeholder="Canonical answer"></label><label class="field">Rank<select class="select" data-answer-field="tier" data-answer-index="${index}">${TIERS.map(t=>`<option value="${t.id}" ${a.tier===t.id?'selected':''}>${e(t.name)} · ${t.points}</option>`).join('')}</select></label><button type="button" class="dialog-close remove-answer" aria-label="Remove answer ${index+1}" data-action="remove-answer" data-index="${index}">×</button></div><label class="field">Aliases<input class="input" data-answer-field="aliases" data-answer-index="${index}" value="${e((a.aliases||[]).join(', '))}" maxlength="2000" placeholder="Alternative name, nickname, other spelling"></label>${a.tier==='councillion'?`<label class="field gold-field">One in a Councillion subtitle<textarea class="textarea" data-answer-field="explanation" data-answer-index="${index}" maxlength="1000" placeholder="Explain what this answer is and why it deserves 100 points…">${e(a.explanation||'')}</textarea></label>`:''}${pack.id&&S.savedAnswerIds.has(a.id)?`<button type="button" class="button secondary small" data-action="regrade-answer" data-index="${index}">APPLY RARITY CORRECTION</button>`:''}</div>`).join('')}</div></section><div class="editor-actions"><button type="button" class="button secondary" data-action="save-draft" ${S.busy?'disabled':''}>${busyText('SAVE DRAFT')}</button><button type="submit" class="button primary" ${S.busy?'disabled':''}>${busyText('PUBLISH PACK →')}</button></div><p class="local-note">Publication requires seven complete questions, at least one accepted answer per question, and an explanation for every Councillion answer. Once someone starts playing, create a new pack for structural changes; score corrections happen through review.</p></form>`;
+    return `<section class="page-intro editor-intro"><button class="text-button" data-action="admin">← BACK TO GAME MASTER</button><p class="eyebrow">MAKE THE COUNCIL THINK</p><h1 class="section-title">${pack.id?'EDIT YOUR PACK.':'BUILD A PACK.'}</h1></section><form data-form="pack-editor"><div class="form-grid"><label class="field">Pack title<input class="input" data-pack-field="title" value="${e(pack.title)}" maxlength="80" placeholder="Give your pack a name" required></label><label class="field">Pack icon<select class="select" data-pack-field="icon">${['turkey','crown','game','music','film','globe','food','sport','book','star'].map(icon=>`<option value="${icon}" ${pack.icon===icon?'selected':''}>${e(icon.charAt(0).toUpperCase()+icon.slice(1))}</option>`).join('')}</select></label><label class="field">Description<textarea class="textarea" data-pack-field="description" maxlength="300" placeholder="What are we getting ourselves into?">${e(pack.description)}</textarea></label><label class="field">Pack color<select class="select" data-pack-field="color">${PACK_COLORS.map(color=>`<option value="${color.id}" ${pack.color===color.id?'selected':''}>${e(color.name)}</option>`).join('')}</select></label></div><div class="question-nav" aria-label="Questions">${pack.questions.map((question,index)=>`<button type="button" class="nav-btn ${index===i?'active':''}" data-action="edit-question" data-index="${index}">Q${index+1}${question.prompt.trim()&&question.answers.some(a=>a.canonical.trim())?' ✓':''}</button>`).join('')}</div><section class="editor-question"><div class="question-editor-header"><p class="eyebrow">QUESTION ${i+1} OF 7</p><span class="badge">25 SECONDS</span></div><label class="field">The question<textarea class="textarea question-textarea" data-question-field="prompt" maxlength="500" placeholder="Write the exact question your players will see…">${e(q.prompt)}</textarea></label><div class="section-heading"><div><h2>Accepted answers</h2><p class="hint">Set the rank yourself. Aliases and small, unique typos ask players to confirm the recognized answer. Use comma-separated aliases for equivalent names such as red apple for Apple.</p></div><div class="section-actions"><button type="button" class="button secondary small" data-action="bulk-answers">PASTE ANSWER LIST</button><button type="button" class="button secondary small" data-action="add-answer">+ ADD ANSWER</button></div></div>${pack.id?'<p class="notice">Already played? Use <strong>Apply rarity correction</strong> on a saved answer to update its rank and explanation. Non-overridden historical scores update automatically. Other question content stays frozen once play begins.</p>':''}<div class="answers-editor">${q.answers.map((a,index)=>`<div class="answer-editor" data-tier="${e(a.tier)}"><div class="answer-editor-main"><label class="field">Answer<input class="input" data-answer-field="canonical" data-answer-index="${index}" value="${e(a.canonical)}" maxlength="160" placeholder="Canonical answer"></label><label class="field">Rank<select class="select" data-answer-field="tier" data-answer-index="${index}">${TIERS.map(t=>`<option value="${t.id}" ${a.tier===t.id?'selected':''}>${e(t.name)} · ${t.points}</option>`).join('')}</select></label><button type="button" class="dialog-close remove-answer" aria-label="Remove answer ${index+1}" data-action="remove-answer" data-index="${index}">×</button></div><label class="field">Aliases<input class="input" data-answer-field="aliases" data-answer-index="${index}" value="${e((a.aliases||[]).join(', '))}" maxlength="2000" placeholder="Alternative name, nickname, other spelling"></label>${a.tier==='councillion'?`<label class="field gold-field">One in a Councillion subtitle<textarea class="textarea" data-answer-field="explanation" data-answer-index="${index}" maxlength="1000" placeholder="Explain what this answer is and why it deserves 100 points…">${e(a.explanation||'')}</textarea></label>`:''}${pack.id&&S.savedAnswerIds.has(a.id)?`<button type="button" class="button secondary small" data-action="regrade-answer" data-index="${index}">APPLY RARITY CORRECTION</button>`:''}</div>`).join('')}</div></section><div class="editor-actions"><button type="button" class="button secondary" data-action="save-draft" ${S.busy?'disabled':''}>${busyText('SAVE DRAFT')}</button><button type="submit" class="button primary" ${S.busy?'disabled':''}>${busyText('PUBLISH PACK →')}</button></div><p class="local-note">Publication requires seven complete questions, at least one accepted answer per question, and an explanation for every Councillion answer. Once someone starts playing, create a new pack for structural changes; score corrections happen through review.</p></form>`;
   }
   function renderDialog() {
     if (!S.dialog) { dialogRoot.innerHTML=''; return; }
@@ -2055,11 +2210,13 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
   async function loadAdmin() {
     S.adminPacks=await api.adminList();
     S.review=typeof api.adminReviews==='function'?await api.adminReviews():[];
+    S.scoreError='';try{S.scores=typeof api.adminScores==='function'?await api.adminScores():[];}catch(err){S.scores=[];S.scoreError='Score controls need the upgrade-launch-polish.sql database update. '+err.message;}
   }
   async function play(packId) {
     if(!S.profile?.username){S.afterName=()=>play(packId);openDialog('username');return;}
     S.invalid='';S.suggestion=null;
-    const existing=S.packs.find(p=>p.id===packId)?.myAttempt;
+    const selectedPack=S.packs.find(p=>p.id===packId);
+    const existing=selectedPack?.myAttempt||(S.profile?.isAdmin?selectedPack?.myPractice:null);
     if(existing && existing.status!=='completed'){
       const interrupted=await api.getState(existing.id);
       S.game=await api.resume(interrupted.id,interrupted.question?.id||null);
@@ -2079,9 +2236,15 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
     S.screen='game';render();window.scrollTo({top:0,behavior:'instant'});
   }
   async function showResults(id) {
-    S.results=await api.getResults(id);S.screen='results';S.search='';
+    const results=await api.getResults(id);
+    if(S.screen==='game'&&S.game?.id===id){
+      S.animating=true;S.returning=true;S.animationFrom=Number(S.game.runScore||0);S.animationGoldBefore=!!S.game.hasCouncillion;
+      try{await window.CouncilArcade?.dismissQuestion?.();render();await window.CouncilArcade?.returnToSurface?.();}
+      finally{S.animating=false;S.returning=false;}
+    }
+    S.results=results;S.screen='results';S.search='';
     writeStore('councillion.lastAttempt',id);
-    if((S.results.questions||[]).some(q=>Number(q.points)===100)){beep(true);celebrate();}else beep(false);
+    window.CouncilArcade?.sound('results');
     await refreshPacks();
   }
   async function lockAnswer(text, confirmed=false) {
@@ -2123,10 +2286,6 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
     if(value){value.textContent=String(Math.ceil(left/1000)).padStart(2,'0');value.parentElement.classList.toggle('urgent',left<=5000);}
     const fill=document.getElementById('timer-fill');if(fill)fill.style.width=`${Math.min(100,left/25000*100)}%`;
     if(left<=0&&!S.busy&&!S.timerRequest){S.timerRequest=true;run(async()=>{await lockAnswer('');}).then(()=>{if(S.error)S.timerRequest=false;});}
-  }
-  function beep(gold=false) {
-    if(!S.sound)return;
-    try{const context=new(window.AudioContext||window.webkitAudioContext)();const notes=gold?[523,659,784,1047]:[392,523];notes.forEach((freq,i)=>{const oscillator=context.createOscillator(),gain=context.createGain();oscillator.type='square';oscillator.frequency.value=freq;gain.gain.setValueAtTime(.035,context.currentTime+i*.11);gain.gain.exponentialRampToValueAtTime(.001,context.currentTime+i*.11+.16);oscillator.connect(gain);gain.connect(context.destination);oscillator.start(context.currentTime+i*.11);oscillator.stop(context.currentTime+i*.11+.17);});setTimeout(()=>context.close(),1000);}catch(_){}
   }
   function celebrate() {
     if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
@@ -2183,10 +2342,11 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
       if(action==='next-question'){S.invalid='';S.suggestion=null;await window.CouncilArcade?.prepareNext?.();S.game=await api.startQuestion(S.game.id);syncClock();S.timerRequest=false;return;}
       if(action==='pack-board'||action==='board-select'){S.boardPack=id||'';await navigate('leaderboard');return;}
       if(action==='refresh-results'){await showResults(S.results?.attemptId||S.game?.id||readStore('councillion.lastAttempt',''));return;}
-      if(action==='share-results'){const text=`${S.results.username||S.profile?.username} · ${S.results.title}\n${S.results.total}/700 on COUNCILLION${S.results.isOfficial===false?' (REPLAY — not a leaderboard score)':''}\n${(S.results.questions||[]).map(q=>({councillion:'🟨',grimkyle:'🟪',donovan:'🟧',cavaughn:'🟦',kalen:'🟩',dino:'⬜'})[q.tier]||'⬛').join('')}\nTHE COUNCIL HAS SPOKEN.`;try{await navigator.clipboard.writeText(text);S.notice='Score copied. Send it to the Council.';}catch(_){window.prompt('Copy your score:',text);}return;}
+      if(action==='share-results'){const text=`${S.results.username||S.profile?.username} · ${S.results.title}\n${S.results.total}/700 on COUNCILLION${S.results.scoreStatus==='removed'?' (SCORE REMOVED)':S.results.isGameMaster?' (GAME MASTER PRACTICE)':S.results.isOfficial===false?' (REPLAY — not a leaderboard score)':''}\n${(S.results.questions||[]).map(q=>({councillion:'🟨',grimkyle:'🟪',donovan:'🟧',cavaughn:'🟦',kalen:'🟩',dino:'⬜'})[q.tier]||'⬛').join('')}\nTHE COUNCIL HAS SPOKEN.`;try{await navigator.clipboard.writeText(text);S.notice='Score copied. Send it to the Council.';}catch(_){window.prompt('Copy your score:',text);}return;}
       if(action==='edit-pack'){S.editor=await api.adminGet(id);S.savedAnswerIds=new Set(S.editor.questions.flatMap(q=>q.answers.map(a=>a.id)));S.editorQuestion=0;S.screen='editor';return;}
       if(action==='regrade-answer'){syncEditor();const answer=S.editor.questions[S.editorQuestion].answers[Number(button.dataset.index)];await api.adminRegradeAnswer({answerId:answer.id,tier:answer.tier,explanation:answer.explanation||''});S.notice='Rarity correction applied. Historical scores without individual overrides and the leaderboards are updated.';return;}
       if(action==='save-draft'){await savePack(false);return;}
+      if(action==='delete-score'){const score=S.scores.find(s=>s.attemptId===id);if(!window.confirm(`Delete ${score?.username||'this player'}’s ${score?.score||0}-point score for “${score?.packTitle||'this pack'}”? Their original attempt stays on record.`))return;await api.adminDeleteScore(id,'Removed by Game Master');await loadAdmin();await refreshPacks();S.notice='Score removed from the leaderboards and answer percentages.';return;}
       if(action==='refresh-admin'){await loadAdmin();return;}
       if(action==='publish-pack'||action==='private-pack'){await api.adminVisibility(id,action==='publish-pack');await loadAdmin();await refreshPacks();S.notice=action==='publish-pack'?'Pack is public. Everyone with the website link can play.':'Pack is private. Players cannot start or continue it until you publish it again.';return;}
       if(action==='delete-pack'){const pack=S.adminPacks.find(p=>p.id===id);if(!window.confirm(`Delete “${pack?.title||'this pack'}” from the website? It will stop being playable. Saved results and score history will be retained.`))return;await api.adminDelete(id);await loadAdmin();await refreshPacks();S.notice='Pack deleted from the website. Saved results and score history are retained.';return;}
@@ -2223,6 +2383,7 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
   });
   document.addEventListener('change',event=>{
     const input=event.target;
+    if(input.id==='score-pack-filter'){S.scoreFilter=input.value;render();return;}
     if(input.dataset.answerField==='tier'){syncEditor();render();}
     if(input.id==='import-pack'&&input.files[0])run(async()=>{
       const file=input.files[0];if(file.size>1000000)throw new Error('Choose a pack file under 1 MB.');
@@ -2238,6 +2399,10 @@ window.COUNCIL_CONFIG = { url: '', key: '' };
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateTimer();});
   setInterval(updateTimer,100);
   async function boot() {
+    const recoveryHash=window.location?.hash?new URLSearchParams(window.location.hash.replace(/^#/,'')):null;
+    if(recoveryHash?.get('type')==='recovery'||recoveryHash?.has('error_description')){
+      window.location.replace(new URL('reset-password.html'+window.location.hash,window.location.href).href);return;
+    }
     if(!api){S.error='The game service did not load. Open the complete website folder, or use the standalone Councillion.html file.';render();return;}
     try { S.profile=await api.init();await refreshPacks();if(window.CouncilStorageUnavailable)S.error='Browser storage is blocked. This session cannot preserve progress or packs when you close it. Allow site storage before creating a pack or playing.';if(window.CouncilConfigurationError)S.error='Connection configuration: '+window.CouncilConfigurationError; }
     catch(err) { S.error=err.message||'Could not connect. Check your settings and try again.'; }

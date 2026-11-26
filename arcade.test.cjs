@@ -8,7 +8,7 @@ function environment({reduced=false,extras={}}={}){
  const events=[],queue=new Map(),timeouts=new Map();let id=0;
  const context={console,Math,Number,String,Array,Set,Promise,setTimeout:(f)=>{timeouts.set(++id,f);return id;},clearTimeout:n=>timeouts.delete(n),requestAnimationFrame:f=>{queue.set(++id,f);return id;},cancelAnimationFrame:n=>queue.delete(n),matchMedia:()=>({matches:reduced}),...extras};
  context.window=context;vm.createContext(context);vm.runInContext(fs.readFileSync(path.join(__dirname,'../arcade.js'),'utf8'),context);
- function classes(){const s=new Set();return{add:(...xs)=>xs.forEach(x=>s.add(x)),remove:(...xs)=>xs.forEach(x=>s.delete(x)),contains:x=>s.has(x),values:s};}
+ function classes(){const s=new Set();return{add:(...xs)=>xs.forEach(x=>s.add(x)),remove:(...xs)=>xs.forEach(x=>s.delete(x)),contains:x=>s.has(x),toggle:(x,force)=>{const on=force===undefined?!s.has(x):force;if(on)s.add(x);else s.delete(x);return on;},values:s};}
  const rails=Array.from(context.CouncilArcade.ranks,r=>({dataset:{rank:r.id,points:r.points},classList:classes()}));
  const bubble={textContent:''},avatar={classList:classes()},style={setProperty:(k,v)=>events.push([k,v])};
  const stage={dataset:{score:'0'},isConnected:true,clientHeight:700,classList:classes(),style,querySelector:s=>s==='.arcade-avatar'?avatar:s==='.gobble-bubble'?bubble:s==='[data-arcade-depth]'?{textContent:''}:s==='.burrow-rank-rail.is-winning'?rails.find(r=>r.classList.contains('is-winning')):s.startsWith('.burrow-rank-rail[data-rank=')?rails.find(r=>s.includes(r.dataset.rank)):null,querySelectorAll:s=>s==='.burrow-rank-rail'?rails:[],closest:()=>null};
@@ -25,7 +25,7 @@ test('descent moves camera, passes ranks, settles and transforms turkey to gold'
  const done=env.api.descend({fromScore:0,toScore:100,tier:'councillion',gold:true});
  env.advance(0);env.advance(1900);env.advance(3000);await done;
  assert.equal(env.stage.dataset.score,'100');assert.ok(env.stage.classList.contains('is-gold'));assert.ok(env.avatar.classList.contains('is-gold'));
- assert.ok(env.rails.every(r=>r.classList.contains('is-passed')));assert.ok(env.events.some(([k,v])=>k==='--camera-y'&&Math.abs(parseFloat(v)-440)<.01));
+ assert.ok(env.rails.every(r=>r.classList.contains('is-passed')));assert.ok(env.events.some(([k,v])=>k==='--camera-y'&&Math.abs(parseFloat(v)-286)<.01));
  env.api.destroy();
 });
 test('reduced-motion descent resolves immediately while retaining final score and gold',async()=>{
@@ -39,11 +39,13 @@ test('destroy cancels an in-flight descent and resolves its promise safely',asyn
  await env.api.descend({fromScore:0,toScore:100,gold:true});
 });
 
-test('bird visibly travels downward to the gold rail while the rank ruler stays in screen space',async()=>{
- const env=environment();env.api.mount({querySelector:()=>env.stage});const done=env.api.descend({fromScore:100,toScore:200,tier:'councillion',gold:true});
- env.advance(0);env.advance(700);const middle=env.events.filter(([k])=>k==='--avatar-y').at(-1)[1];assert.ok(parseFloat(middle)>50 && parseFloat(middle)<80);
- env.advance(3000);await done;assert.equal(env.events.filter(([k])=>k==='--avatar-y').at(-1)[1],'80%');assert.ok(env.events.some(([k,v])=>k==='--avatar-px'&&parseFloat(v)===560));
- const markup=env.api.scene({phase:'reveal',tier:'councillion',score:200});assert.ok(markup.includes('--rail-y:80%'));assert.ok(markup.includes('--avatar-y:80%'));assert.ok(markup.includes('dig-face'));env.api.destroy();
+test('rank lines are anchored to world depth while the bird and camera travel independently',async()=>{
+ const env=environment();env.api.mount({querySelector:()=>env.stage},{score:100,phase:'thinking'});const done=env.api.descend({fromScore:100,toScore:200,tier:'councillion',gold:true});
+ env.advance(0);env.advance(1300);const middle=env.events.filter(([k])=>k==='--avatar-y').at(-1)[1];assert.ok(parseFloat(middle)>50 && parseFloat(middle)<72);
+ const base=env.events.filter(([k])=>k==='--rank-base').at(-1)[1];assert.equal(base,'790.00px');
+ env.advance(3500);await done;assert.equal(parseFloat(env.events.filter(([k])=>k==='--avatar-y').at(-1)[1]),72);
+ assert.equal(env.events.filter(([k])=>k==='--rank-base').at(-1)[1],base);
+ const markup=env.api.scene({phase:'reveal',tier:'councillion',score:200});assert.ok(markup.includes('--rank-offset:440px'));assert.ok(markup.includes('dig-face'));env.api.destroy();
 });
 test('blank reaction keeps its pause until completed and cleans up on navigation',async()=>{
  const env=environment();env.api.mount({querySelector:()=>env.stage});let finished=false;const done=env.api.miss().then(()=>finished=true);await Promise.resolve();assert.equal(finished,false);assert.ok(env.stage.classList.contains('is-missed'));
@@ -59,8 +61,8 @@ test('question hides the rank ruler and landing alone reveals the winning rank a
  const env=environment();const question=env.api.scene({phase:'thinking',score:10,tier:'dino'});
  assert.match(question,/class="arcade-scene is-question"/);assert.match(question,/burrow-rails" aria-hidden="true"/);assert.ok(!question.includes('is-winning'));
  const locked=env.api.scene({phase:'descending',score:10,tier:'councillion'});assert.ok(!locked.includes('is-winning'));assert.ok(!locked.includes('gold-burst'));
- env.api.mount({querySelector:()=>env.stage});const done=env.api.descend({fromScore:10,toScore:110,tier:'councillion',gold:true});
- env.advance(0);env.advance(200);assert.equal(env.events.filter(([k])=>k==='--avatar-y').at(-1)[1],'50%');
+ env.api.mount({querySelector:()=>env.stage},{score:10,phase:'thinking'});const done=env.api.descend({fromScore:10,toScore:110,tier:'councillion',gold:true});
+ env.advance(0);env.advance(200);assert.equal(env.events.filter(([k])=>k==='--avatar-y').at(-1)[1],'50.000%');
  env.advance(2200);assert.ok(env.rails.some(r=>r.classList.contains('is-passed')));assert.ok(env.rails.every(r=>!r.classList.contains('is-winning')));assert.ok(!env.avatar.classList.contains('is-gold'));
  env.advance(3000);await done;assert.ok(env.rails.at(-1).classList.contains('is-winning'));assert.ok(env.avatar.classList.contains('is-gold'));env.api.destroy();
 });
@@ -79,7 +81,7 @@ test('question dismisses before flight and waits for the keyboard viewport to se
 });
 test('viewport resize keeps current bird position and tunnel geometry aligned during a descent',async()=>{
  const env=environment();env.api.mount({querySelector:()=>env.stage});const done=env.api.descend({fromScore:0,toScore:100,tier:'councillion',gold:true});env.advance(0);env.advance(1500);const y=Number(env.stage.dataset.avatarY);
- env.stage.clientHeight=400;env.api.resize();assert.equal(Number(env.stage.dataset.avatarY),y);assert.equal(parseFloat(env.events.filter(([k])=>k==='--avatar-px').at(-1)[1]),Number((y*4).toFixed(2)));assert.equal(env.events.filter(([k])=>k==='--surface-y').at(-1)[1],'200px');env.advance(3000);await done;env.api.destroy();
+ env.stage.clientHeight=400;env.api.resize();assert.ok(Number.isFinite(Number(env.stage.dataset.avatarY))); assert.equal(parseFloat(env.events.filter(([k])=>k==='--avatar-px').at(-1)[1]),Number((200+Number(env.stage.dataset.score)*4.4-Number(env.stage.dataset.camera)).toFixed(2)));assert.equal(env.events.filter(([k])=>k==='--surface-y').at(-1)[1],'200.00px');env.advance(3000);await done;env.api.destroy();
 });
 function audioFixture(state='running'){
  const buffers=[],gains=[];let starts=0,resumes=0,speeches=0,instance;
@@ -103,4 +105,22 @@ test('gobble is two quiet locally synthesized bird calls, never speech, and rapi
 });
 test('first gobble resumes suspended mobile audio before playing',async()=>{
  const audio=audioFixture('suspended'),env=environment({extras:{AudioContext:audio.AudioContext}});env.api.mount({querySelector:()=>env.stage});env.api.setSound(true);env.api.gobble();await Promise.resolve();await Promise.resolve();assert.equal(audio.resumes,1);assert.equal(audio.starts,1);env.api.destroy();
+});
+
+test('return to surface reverses the world camera and resolves at the starting clearing',async()=>{
+ const env=environment();env.stage.dataset.score='250';env.api.mount({querySelector:()=>env.stage});
+ const done=env.api.returnToSurface();env.advance(0);env.advance(1300);
+ assert.ok(Number(env.stage.dataset.camera)>0&&Number(env.stage.dataset.camera)<1100);assert.ok(env.stage.classList.contains('is-ascending'));
+ env.advance(3100);await done;assert.equal(Number(env.stage.dataset.camera),0);assert.equal(Number(env.stage.dataset.score),0);assert.ok(env.stage.classList.contains('at-surface'));env.api.destroy();
+});
+test('descent stays visible at narrow iPhone and landscape keyboard heights, including rotation mid-flight',async()=>{
+ for(const height of [246,326,568,611,724,788,968]){
+  const env=environment();env.stage.clientHeight=height;env.api.mount({querySelector:()=>env.stage},{score:100,phase:'thinking'});
+  const done=env.api.descend({fromScore:100,toScore:200,tier:'councillion',gold:true});env.advance(0);env.advance(1200);
+  env.stage.clientHeight=height===788?326:height;env.api.resize();env.advance(3500);await done;
+  const feet=parseFloat(env.events.filter(([k])=>k==='--avatar-px').at(-1)[1]);
+  assert.ok(feet>78&&feet<env.stage.clientHeight-30,`${height}px viewport keeps the turkey visible after descent/resize`);
+  assert.equal(parseFloat(env.events.filter(([k])=>k==='--avatar-y').at(-1)[1]),72);
+  env.api.destroy();
+ }
 });

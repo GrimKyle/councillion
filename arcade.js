@@ -16,21 +16,30 @@
   const timeouts = new Set();
   function later(fn, ms) { let id;id=root.setTimeout(()=>{timeouts.delete(id);fn();},ms);timeouts.add(id);return id; }
   function randomish(i, mult, range) { return (i*mult+17)%range; }
-  function avatarPosition(points) {
-    const stops=[{points:0,y:50},...ranks.map((r,i)=>({points:r.points,y:55+i*5}))];
-    const value=clamp(points,0,100);
-    for(let i=1;i<stops.length;i++){const a=stops[i-1],b=stops[i];if(value<=b.points)return a.y+(b.y-a.y)*(value-a.points)/(b.points-a.points);}
-    return 80;
+  const depthPixels = 4.4; // One score point is ten metres of world depth.
+  const smooth = t => t*t*t*(t*(t*6-15)+10);
+  function surface(stage) { return (stage.clientHeight||700)*.50; }
+  function paint(stage,score,camera) {
+    const height=stage.clientHeight||700,ground=height*.5,feet=ground+score*depthPixels-camera;
+    stage.dataset.score=String(score);stage.dataset.camera=String(camera);
+    stage.style.setProperty('--camera-y',camera.toFixed(2)+'px');
+    stage.style.setProperty('--surface-y',ground.toFixed(2)+'px');
+    stage.style.setProperty('--avatar-y',(feet/height*100).toFixed(3)+'%');
+    stage.style.setProperty('--avatar-px',feet.toFixed(2)+'px');
+    stage.dataset.avatarY=String(feet/height*100);
+    stage.style.setProperty('--tunnel-depth',(Math.max(0,score)*depthPixels+22).toFixed(2)+'px');
+    stage.style.setProperty('--depth-shade',String(Math.min(.7,score/1100)));
+    stage.style.setProperty('--rank-base',(ground+(Number(stage.dataset.baseScore)||0)*depthPixels).toFixed(2)+'px');
   }
-  function placeAvatar(stage, points) { placeAvatarY(stage,avatarPosition(points)); }
-  function placeAvatarY(stage, y) {
-    stage.dataset.avatarY=String(y);
-    stage.style.setProperty('--avatar-y',y+'%');
-    stage.style.setProperty('--avatar-px',(y/100*(stage.clientHeight||700)).toFixed(2)+'px');
+  function phase(stage,value) {
+    stage.dataset.phase=value;
+    for(const [name,active] of Object.entries({'is-question':value==='thinking','is-descending':value==='descending','is-settled':value==='reveal','is-ascending':value==='ascending','at-surface':value==='surface'}))
+      stage.classList.toggle(name,active);
+    stage.querySelector('.burrow-rails')?.setAttribute?.('aria-hidden',String(!['descending','reveal'].includes(value)));
   }
   function scene(opts={}) {
     const score=clamp(opts.score,0,700), gold=!!opts.gold;
-    const phase=['thinking','descending','reveal'].includes(opts.phase)?opts.phase:'thinking';
+    const phase=['thinking','descending','reveal','ascending','surface'].includes(opts.phase)?opts.phase:'thinking';
     const entrance=arriving&&phase==='thinking';arriving=false;
     const stars=Array.from({length:50},(_,i)=>`<i class="burrow-star" style="left:${randomish(i,73,100)}%;top:${randomish(i,41,85)}%;--twinkle:${1+i%5}s"></i>`).join('');
     const trees=Array.from({length:19},(_,i)=>`<i class="burrow-tree" style="left:${i*6-4}%;--tree-h:${90+randomish(i,53,120)}px;--tree-w:${40+randomish(i,19,34)}px"></i>`).join('');
@@ -38,23 +47,31 @@
     const gems=Array.from({length:48},(_,i)=>`<i class="burrow-crystal crystal-${i%3}" style="left:${randomish(i,37,96)+2}%;top:${660+randomish(i,71,2200)}px;--gem-size:${10+i%4*4}px;--gem-delay:${i%7*.4}s"></i>`).join('');
     const dust=Array.from({length:26},(_,i)=>`<i style="--dust-x:${(i%2?-1:1)*(18+i%7*14)}px;--dust-y:${-12-i%6*10}px;--dust-delay:${i%8*.075}s;--dust-color:${['#e9b36f','#b78154','#82708f','#e9d4a8'][i%4]}"></i>`).join('');
     const earned=ranks.find(r=>r.id===opts.tier)?.points||0;
-    const rails=ranks.map((r,i)=>`<div class="burrow-rank-rail${opts.phase==='reveal'&&earned>=r.points?' is-passed':''}${opts.phase==='reveal'&&r.id===opts.tier?' is-winning':''}" data-rank="${r.id}" data-points="${r.points}" style="--rank-color:${r.color};--rail-y:${55+i*5}%"><span class="rail-symbol">${i===5?'♛':'◆'}</span><span class="rail-rule"></span><span class="rail-label">${r.name} <b>+${r.points}</b></span></div>`).join('');
-    return `<div class="arcade-scene${gold?' is-gold':''}${phase==='thinking'?' is-question':''}${entrance?' is-arriving':''}${phase==='reveal'?' is-settled':''}${phase==='reveal'&&earned===100?' gold-burst':''}" data-phase="${phase}" data-score="${score}" style="--avatar-y:${avatarPosition(opts.phase==='reveal'?earned:0)}%;--camera-y:${score*4.4}px;--depth-shade:${Math.min(.72,score/1100)}"><div class="burrow-sky">${stars}<div class="burrow-moon"></div></div><div class="burrow-world"><div class="burrow-forest far-forest">${trees}</div><div class="burrow-forest near-forest">${trees}</div><div class="council-hut"><i class="hut-roof"></i><i class="hut-body"></i><i class="hut-window"></i><i class="hut-door"></i><span>THE COUNCIL</span></div><div class="burrow-ground"><div class="ground-grass"></div><div class="soil-layer soil-loam">${roots}</div><div class="soil-layer soil-shale"></div><div class="soil-layer soil-amethyst"></div><div class="soil-layer soil-abyss"></div>${gems}<div class="burrow-tunnel"></div><div class="ancient-tablet tablet-one">THE OBVIOUS<br>STAYS ABOVE.</div><div class="ancient-tablet tablet-two">ONLY THE<br>COUNCIL KNOWS.</div></div></div><div class="burrow-depth-haze"></div><div class="burrow-rails" aria-hidden="${phase==='thinking'}">${rails}</div><button type="button" data-action="gobble" aria-label="Make the turkey gobble" class="arcade-avatar${gold?' is-gold':''}"><span class="gobble-bubble" aria-live="polite"></span><span class="dig-face" aria-hidden="true"></span><div class="turkey-aura"></div><div class="turkey-motion">${opts.turkeySVG||''}</div><div class="turkey-footsteps"><i></i><i></i></div><div class="turkey-dust">${dust}</div><div class="gold-sparkles">${Array.from({length:12},(_,i)=>`<i style="--spark-x:${Math.cos(i*Math.PI/6)*105}px;--spark-y:${Math.sin(i*Math.PI/6)*85}px;--spark-delay:${i*.035}s"></i>`).join('')}</div></button><div class="burrow-impact"></div><div class="burrow-side-scale">${Array.from({length:9},(_,i)=>`<span>${Math.round((score*10+i*100)/100)*100}m</span>`).join('')}</div><div class="burrow-coordinates"><span>COUNCIL EXPEDITION</span><span data-arcade-depth>${Math.round(score*10).toLocaleString()}m BELOW THE ORDINARY</span></div><div class="burrow-vignette"></div></div>`;
+    const rails=ranks.map((r,i)=>`<div class="burrow-rank-rail${opts.phase==='reveal'&&earned>=r.points?' is-passed':''}${opts.phase==='reveal'&&r.id===opts.tier?' is-winning':''}" data-rank="${r.id}" data-points="${r.points}" style="--rank-color:${r.color};--rank-offset:${Math.round(r.points*depthPixels)}px"><span class="rail-symbol">${i===5?'♛':'◆'}</span><span class="rail-rule"></span><span class="rail-label">${r.name} <b>+${r.points}</b></span></div>`).join('');
+    return `<div class="arcade-scene${gold?' is-gold':''}${phase==='thinking'?' is-question':''}${entrance?' is-arriving':''}${phase==='reveal'?' is-settled':''}${phase==='reveal'&&earned===100?' gold-burst':''}" data-phase="${phase}" data-attempt-id="${escape(opts.attemptId||'')}" data-score="${score}" data-base-score="${Number(opts.baseScore)||0}" style="--avatar-y:50%;--camera-y:${score*4.4}px;--depth-shade:${Math.min(.72,score/1100)}"><div class="burrow-sky">${stars}<div class="burrow-moon"></div></div><div class="burrow-world"><div class="burrow-forest far-forest">${trees}</div><div class="burrow-forest near-forest">${trees}</div><div class="council-hut"><i class="hut-roof"></i><i class="hut-body"></i><i class="hut-window"></i><i class="hut-door"></i><span>THE COUNCIL</span></div><div class="burrow-ground"><div class="ground-grass"></div><div class="soil-layer soil-loam">${roots}</div><div class="soil-layer soil-shale"></div><div class="soil-layer soil-amethyst"></div><div class="soil-layer soil-abyss"></div>${gems}<div class="burrow-tunnel"></div><div class="ancient-tablet tablet-one">THE OBVIOUS<br>STAYS ABOVE.</div><div class="ancient-tablet tablet-two">ONLY THE<br>COUNCIL KNOWS.</div></div></div><div class="burrow-depth-haze"></div><div class="burrow-rails" aria-hidden="${phase==='thinking'}">${rails}</div><button type="button" data-action="gobble" aria-label="Make the turkey gobble" class="arcade-avatar${gold?' is-gold':''}"><span class="gobble-bubble" aria-live="polite"></span><span class="dig-face" aria-hidden="true"></span><div class="turkey-aura"></div><div class="turkey-motion">${opts.turkeySVG||''}</div><div class="turkey-footsteps"><i></i><i></i></div><div class="turkey-dust">${dust}</div><div class="gold-sparkles">${Array.from({length:12},(_,i)=>`<i style="--spark-x:${Math.cos(i*Math.PI/6)*105}px;--spark-y:${Math.sin(i*Math.PI/6)*85}px;--spark-delay:${i*.035}s"></i>`).join('')}</div></button><div class="burrow-answer-tag" aria-hidden="true"></div><div class="burrow-impact"></div><div class="burrow-side-scale">${Array.from({length:75},(_,i)=>`<span data-depth="${i*100}" style="top:calc(var(--surface-y) + ${i*44}px)">${(i*100).toLocaleString()}m</span>`).join('')}</div><div class="burrow-coordinates"><span>COUNCIL EXPEDITION</span><span data-arcade-depth>${Math.round(score*10).toLocaleString()}m BELOW THE ORDINARY</span></div><div class="burrow-vignette"></div></div>`;
   }
-  function mount(element) {
+  function mount(element,opts) {
     const target=element?.matches?.('.arcade-scene')?element:element?.querySelector?.('.arcade-scene');
-    if (target!==mounted) { stopAnimation(); mounted=target||null; }
-    if (!mounted) return;
-    resize();
-    mounted.style?.setProperty('--camera-y',(Number(mounted.dataset.score)||0)*4.4+'px');
-    const winning=mounted.querySelector('.burrow-rank-rail.is-winning');
-    placeAvatar(mounted,winning?Number(winning.dataset.points):0);
+    const fresh=target!==mounted;
+    if(fresh) { stopAnimation();mounted=target||null; }
+    if(!mounted)return;
+    if(opts) {
+      mounted.dataset.baseScore=String(opts.baseScore||0);
+      phase(mounted,opts.phase||'thinking');
+      if(opts.phase==='thinking')mounted.classList.remove('is-clearing','is-departing','gold-burst');
+      mounted.classList.toggle('is-gold',!!opts.gold);
+      mounted.querySelector('.arcade-avatar')?.classList.toggle('is-gold',!!opts.gold);
+      if(opts.phase==='thinking'||opts.phase==='surface')for(const node of mounted.querySelectorAll('.burrow-rank-rail'))node.classList.remove('is-passed','is-winning');
+    }
+    const score=opts?.score??(Number(mounted.dataset.score)||0);
+    // Keep the final camera/feet position when the result UI is inserted.
+    const camera=fresh?Math.max(0,score*depthPixels):(Number(mounted.dataset.camera)||0);
+    paint(mounted,score,camera);
   }
   function resize(){
     if(!mounted)return;
-    const h=mounted.clientHeight||700;
-    mounted.style.setProperty('--surface-y',Math.round(h*.5)+'px');
-    placeAvatarY(mounted,Number(mounted.dataset.avatarY)||50);
+    const score=Number(mounted.dataset.score)||0;
+    paint(mounted,score,Number(mounted.dataset.camera)||0);
   }
   function stopAnimation() {
     if(raf!=null){root.cancelAnimationFrame?.(raf);raf=null;}
@@ -65,14 +82,14 @@
     if(!audio){const C=root.AudioContext||root.webkitAudioContext;if(C){audio=new C();master=audio.createGain();master.gain.value=enabled?1:0;master.connect(audio.destination);}}
     return audio;
   }
-  function unlockAudio() { try{const c=ensureAudio();if(c?.state==='suspended')c.resume().catch(()=>{});}catch(_){} }
+  function unlockAudio() { try{const c=ensureAudio();if(c&&c.state!=='running')c.resume().catch(()=>{});}catch(_){} }
   function tone(frequency, start, duration, type='square', volume=.035, slide) {
     if(!enabled)return;
     try{const c=ensureAudio();if(!c||c.state!=='running')return;const o=c.createOscillator(),g=c.createGain();
       o.type=type;o.frequency.setValueAtTime(frequency,c.currentTime+start);
       if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(20,slide),c.currentTime+start+duration);
       g.gain.setValueAtTime(.0001,c.currentTime+start);g.gain.exponentialRampToValueAtTime(volume,c.currentTime+start+.012);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+start+duration);
-      o.connect(g);g.connect(master||c.destination);o.start(c.currentTime+start);o.stop(c.currentTime+start+duration+.025);
+      o.connect(g);g.connect(master||c.destination);o.onended=()=>{o.disconnect?.();g.disconnect?.();};o.start(c.currentTime+start);o.stop(c.currentTime+start+duration+.025);
     }catch(_){}
   }
   // Two quiet, throaty bird calls synthesized locally. No speech service or voice API.
@@ -113,65 +130,83 @@
     if(kind==='timeout'){[220,185,130.81].forEach((n,i)=>tone(n,i*.09,.16,'triangle',.05));return;}
     if(kind==='lock'){tone(880,0,.055,'square',.025);tone(440,.035,.08,'triangle',.04);return;}
     if(kind==='descent'){tone(130.81,0,.55,'triangle',.06,38);[196,261.63,329.63,392].forEach((n,i)=>tone(n,.07+i*.07,.13,'square',.018));return;}
-    if(kind==='tier'){tone(rank.note,0,.15,'square',.03);tone(rank.note*1.5,.065,.22,'triangle',.055);return;}
+    if(kind==='tier'){tone(rank.note,0,.14,'sine',.035);tone(rank.note*2,.05,.28,'sine',.026);return;}
+    if(kind==='surface'){[130.81,164.81,196,261.63,329.63,392,523.25].forEach((n,i)=>tone(n,i*.12,.38,'sine',.022));return;}
+    if(kind==='results'){[261.63,329.63,392,523.25].forEach((n,i)=>tone(n,i*.09,.45,'sine',.026));return;}
     if(kind==='gold'){[523.25,659.25,783.99,1046.5,1318.51,1567.98].forEach((n,i)=>tone(n,i*.085,.24,'square',.025));[523.25,659.25,783.99].forEach(n=>tone(n,.55,.55,'triangle',.035));tone(2093,.82,.32,'sine',.025);return;}
     tone(rank.note,0,.12,'square',.026);tone(rank.note*1.25,.075,.18,'triangle',.04);
   }
   function setSound(value){enabled=!!value;try{if(master)master.gain.setValueAtTime(enabled?1:0,audio.currentTime);}catch(_){}}
   function descend(opts={}) {
-    stopAnimation();
-    const stage=mounted;
-    if(!stage)return Promise.resolve();
+    stopAnimation();const stage=mounted;if(!stage)return Promise.resolve();
     const from=clamp(opts.fromScore,0,700),to=clamp(opts.toScore,from,700),gain=to-from;
-    const duration=reduced()?30:(opts.gold?2350:1850),leadIn=reduced()?0:240;
-    const targetY=avatarPosition(gain);
-    stage.classList.add('is-descending');stage.classList.remove('is-question','is-settled');
-    stage.querySelector('.burrow-rails')?.setAttribute?.('aria-hidden','false');
-    placeAvatar(stage,0);
-    stage.dataset.score=String(from);stage.style.setProperty('--camera-y',from*4.4+'px');
-    const avatar=stage.querySelector('.arcade-avatar');
+    const duration=reduced()?0:1700+gain*8,leadIn=reduced()?0:320;
+    const cameraFrom=Number(stage.dataset.camera)||0;
+    // The bird travels first. The camera follows only once it reaches the lower half.
+    const cameraTo=()=>Math.max(cameraFrom,surface(stage)+to*depthPixels-(stage.clientHeight||700)*.72);
+    stage.dataset.baseScore=String(from);phase(stage,'descending');
+    stage.classList.remove('is-clearing','is-departing');
+    const avatar=stage.querySelector('.arcade-avatar'),tag=stage.querySelector('.burrow-answer-tag');
+    if(tag)tag.textContent=opts.canonical?'“'+opts.canonical+'”':'';
     const railNodes=[...stage.querySelectorAll('.burrow-rank-rail')];
-    railNodes.forEach(n=>n.classList.remove('is-passed','is-winning'));
-    if(gain>0)sound('descent');else sound('timeout');
+    const hud=stage.closest?.('.arcade-shell');
+    const hudDepth=hud?.querySelector?.('#burrow-depth'),hudScore=hud?.querySelector?.('#burrow-score');
+    const depth=stage.querySelector('[data-arcade-depth]');
+    railNodes.forEach(n=>n.classList.remove('is-passed','is-winning'));paint(stage,from,cameraFrom);
+    sound(gain>0?'descent':'timeout');
     return new Promise(resolve=>{
       pending=resolve;let started=null,finished=false;const crossed=new Set();
       function finish(){
-        if(finished)return;finished=true;
-        if(raf!=null){root.cancelAnimationFrame?.(raf);raf=null;}
-        if(stage===mounted){railNodes.filter(n=>Number(n.dataset.points)<=gain).forEach(n=>n.classList.add('is-passed'));stage.style.setProperty('--depth-shade',String(Math.min(.72,to/1100)));placeAvatar(stage,gain);stage.querySelector('.burrow-rank-rail[data-rank="'+opts.tier+'"]')?.classList.add('is-winning');stage.dataset.score=String(to);stage.style.setProperty('--camera-y',to*4.4+'px');stage.classList.remove('is-descending');stage.classList.add('is-settled');if(opts.gold){stage.classList.add('gold-burst','is-gold');avatar?.classList.add('is-gold');sound('gold');later(()=>stage.classList.remove('gold-burst'),1500);}}
+        if(finished)return;finished=true;if(raf!=null){root.cancelAnimationFrame?.(raf);raf=null;}
+        if(stage===mounted){
+          paint(stage,to,cameraTo());phase(stage,'reveal');
+          railNodes.forEach(n=>{if(Number(n.dataset.points)<=gain)n.classList.add('is-passed');if(n.dataset.rank===opts.tier)n.classList.add('is-winning');});
+          if(hudScore)hudScore.textContent=String(to);
+          if(opts.gold){stage.classList.add('gold-burst','is-gold');avatar?.classList.add('is-gold');sound('gold');later(()=>stage.classList.remove('gold-burst'),1400);}
+        }
         if(pending===resolve)pending=null;resolve();
       }
       function frame(now){
-        if(finished)return;
-        if(stage!==mounted||stage.isConnected===false){finish();return;}
+        if(finished)return;if(stage!==mounted||stage.isConnected===false){finish();return;}
         if(started===null)started=now;
-        const progress=clamp((now-started-leadIn)/duration,0,1);
-        const ease=progress*progress*progress*(progress*(progress*6-15)+10);
-        const avatarY=50+(targetY-50)*ease;
-        const current=from+gain*ease;
-        placeAvatarY(stage,avatarY);
-        stage.style.setProperty('--camera-y',(current*4.4).toFixed(2)+'px');
-        stage.style.setProperty('--depth-shade',Math.min(.72,current/1100).toFixed(3));
+        const progress=clamp((now-started-leadIn)/duration,0,1),e=smooth(progress),current=from+gain*e;
+        const camera=cameraFrom+(cameraTo()-cameraFrom)*e;
+        paint(stage,current,camera);
         stage.style.setProperty('--burrow-progress',String(progress));
-        const ticks=[...stage.querySelectorAll('.burrow-side-scale span')];ticks.forEach((tick,i)=>{tick.textContent=(Math.floor(current*10/100)*100+i*100)+'m';});
-        const depth=stage.querySelector('[data-arcade-depth]');if(depth)depth.textContent=Math.round(current*10).toLocaleString()+'m BELOW THE ORDINARY';
-        const shell=stage.closest?.('.arcade-shell');
-        const hudDepth=shell?.querySelector?.('#burrow-depth'),hudScore=shell?.querySelector?.('#burrow-score');
         if(hudDepth)hudDepth.innerHTML=Math.round(current*10).toLocaleString()+'<small>m</small>';
-        if(hudScore)hudScore.textContent=String(Math.round(current));
-        for(const [i,r] of ranks.entries()){
-          if(gain>=r.points&&avatarY>=55+i*5-.001&&!crossed.has(r.id)){
-            crossed.add(r.id);railNodes.find(n=>n.dataset.rank===r.id)?.classList.add('is-passed');sound('tier',r.id);
-          }
+        // Numeric points, like the winning rank, wait for landing.
+        if(depth)depth.textContent=Math.round(current*10).toLocaleString()+'m BELOW THE ORDINARY';
+        for(const rank of ranks)if(current-from>=rank.points-.001&&!crossed.has(rank.id)){
+          crossed.add(rank.id);const rail=railNodes.find(n=>n.dataset.rank===rank.id);
+          rail?.classList.add('is-passed','is-crossing');sound('tier',rank.id);later(()=>rail?.classList.remove('is-crossing'),460);
         }
         if(progress<1)raf=root.requestAnimationFrame(frame);else finish();
       }
-      if(reduced()||!root.requestAnimationFrame){railNodes.filter(n=>Number(n.dataset.points)<=gain).forEach(n=>n.classList.add('is-passed'));finish();}
-      else raf=root.requestAnimationFrame(frame);
-      // Fallback also resolves when a background tab throttles animation frames.
-      later(finish,leadIn+duration+450);
+      if(reduced()||!root.requestAnimationFrame)finish();else raf=root.requestAnimationFrame(frame);
+      if(!finished)later(finish,leadIn+duration+550);
     });
   }
+  function travelCamera(targetScore,duration,returning=false){
+    stopAnimation();const stage=mounted;if(!stage)return Promise.resolve();
+    const score=Number(stage.dataset.score)||0,from=Number(stage.dataset.camera)||0,to=targetScore*depthPixels;
+    const depth=stage.closest?.('.arcade-shell')?.querySelector?.('#burrow-depth');
+    if(returning)phase(stage,'ascending');else stage.classList.add('is-departing');
+    if(returning)sound('surface');
+    return new Promise(resolve=>{
+      pending=resolve;let started=null,finished=false;
+      function finish(){if(finished)return;finished=true;if(raf!=null){root.cancelAnimationFrame?.(raf);raf=null;}
+        if(stage===mounted){paint(stage,returning?0:score,to);if(returning){phase(stage,'surface');if(depth)depth.innerHTML='0<small>m</small>';}}
+        if(pending===resolve)pending=null;resolve();}
+      function frame(now){if(stage!==mounted||stage.isConnected===false){finish();return;}if(started===null)started=now;
+        const p=clamp((now-started)/duration,0,1),e=smooth(p);
+        paint(stage,returning?score*(1-e):score,from+(to-from)*e);
+        if(returning&&depth)depth.innerHTML=Math.round(score*(1-e)*10).toLocaleString()+'<small>m</small>';
+        if(p<1)raf=root.requestAnimationFrame(frame);else finish();}
+      if(reduced()||!root.requestAnimationFrame)finish();else raf=root.requestAnimationFrame(frame);
+      if(!finished)later(finish,duration+450);
+    });
+  }
+  function returnToSurface(){return travelCamera(0,2600,true);}
   function dismissQuestion(){
     stopAnimation();const stage=mounted;if(!stage)return Promise.resolve();
     stage.classList.add('is-clearing');stage.closest?.('.playing-arcade')?.classList.add('is-clearing-ui');
@@ -186,12 +221,7 @@
       later(settle,reduced()?0:viewport?320:220);
     });
   }
-  function prepareNext(){
-    stopAnimation();arriving=true;
-    const stage=mounted;if(!stage||reduced())return Promise.resolve();
-    stage.classList.add('is-departing');
-    return new Promise(resolve=>{pending=resolve;later(()=>{if(pending===resolve)pending=null;resolve();},220);});
-  }
+  function prepareNext(){arriving=true;return travelCamera(Number(mounted?.dataset.score)||0,560);}
   function miss(){
     stopAnimation();const stage=mounted;if(!stage)return Promise.resolve();
     stage.classList.add('is-missed');sound('timeout');
@@ -204,7 +234,7 @@
     later(()=>{if(stage===mounted){stage.classList.remove('is-gobbling');if(bubble)bubble.textContent='';}},1100);
   }
   function destroy(){stopAnimation();mounted=null;}
-  const api={scene,mount,resize,descend,dismissQuestion,prepareNext,miss,gobble,sound,unlockAudio,setSound,destroy,ranks};
+  const api={scene,mount,resize,descend,dismissQuestion,prepareNext,returnToSurface,miss,gobble,sound,unlockAudio,setSound,destroy,ranks};
   root.CouncilArcade=api;
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

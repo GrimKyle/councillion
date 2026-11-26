@@ -21,7 +21,7 @@ await click('play',pack.id);assert.match(dialog.innerHTML,/MAKE A NAME/);await s
 const firstState=await context.CouncilAPI.getState((await context.CouncilAPI.listPacks())[0].myAttempt.id);await submit('answer',{answer:'Not a valid fixture'});assert.match(app.innerHTML,/&quot;Not a valid fixture&quot; is invalid/);assert.match(app.innerHTML,/QUESTION 1/);assert.equal((await context.CouncilAPI.getState(firstState.id)).deadline,firstState.deadline);
 for(let i=0;i<7;i++){await submit('answer',{answer:'fixture'+i});assert.match(app.innerHTML,/ANSWERS LOCKED/);assert.ok(app.innerHTML.includes('fixture'+i));assert.ok(!app.innerHTML.includes('ALL ACCEPTED ANSWERS'));if(i<6)await click('next-question');}
 await click('finish-results');
-assert.match(app.innerHTML,/THE COUNCIL<br>HAS SPOKEN/);assert.match(app.innerHTML,/70<span>\/ 700/);assert.match(app.innerHTML,/YOUR SEVEN ANSWERS/);assert.match(app.innerHTML,/ALL ACCEPTED ANSWERS/);
+assert.match(app.innerHTML,/THE COUNCIL HAS SPOKEN/);assert.match(app.innerHTML,/70<\/strong><span>\/ 700/);assert.match(app.innerHTML,/YOUR SEVEN ANSWERS/);assert.match(app.innerHTML,/ALL ACCEPTED ANSWERS/);
 assert.match(app.innerHTML,/SEARCH THE ANSWER ARCHIVE/);
 const searchRows=[{dataset:{answerSearch:'fixture0dino'},hidden:false},{dataset:{answerSearch:'anotherdonovan'},hidden:false}];const searchGroup={hidden:false,querySelectorAll:()=>searchRows};const searchCard={hidden:false,open:false,querySelectorAll:sel=>sel==='[data-answer-search]'?searchRows:[searchGroup]};
 const originalQuery=document.querySelectorAll;document.querySelectorAll=sel=>sel==='[data-answer-card]'?[searchCard]:[];const beforeSearch=app.innerHTML;
@@ -30,9 +30,9 @@ assert.equal(searchRows[0].hidden,false);assert.equal(searchRows[1].hidden,true)
 for(const listener of listeners.input)listener({target:{id:'answer-search',value:''}});assert.ok(searchRows.every(row=>!row.hidden));document.querySelectorAll=originalQuery;
 assert.match(app.innerHTML,/REPLAY PACK/);await click('replay',pack.id);assert.match(app.innerHTML,/REPLAY · FIRST SCORE SAVED/);
 for(let i=0;i<7;i++){await submit('answer',{answer:'fixture'+i});if(i<6)await click('next-question');}await click('finish-results');
-assert.match(app.innerHTML,/REPLAY SCORE ONLY/);assert.match(app.innerHTML,/70<span>\/ 700/);assert.match(app.innerHTML,/remains <strong>70\/700/);
+assert.match(app.innerHTML,/REPLAY SCORE ONLY/);assert.match(app.innerHTML,/70<\/strong><span>\/ 700/);assert.match(app.innerHTML,/first-run score is 70\/700/);
 await click('packs');assert.match(app.innerHTML,/VIEW FIRST-RUN RESULTS/);assert.match(app.innerHTML,/REPLAY PACK/);
-await click('play',pack.id);assert.match(app.innerHTML,/70<span>\/ 700/);assert.ok(!app.innerHTML.includes('REPLAY SCORE ONLY'));
+await click('play',pack.id);assert.match(app.innerHTML,/70<\/strong><span>\/ 700/);assert.ok(!app.innerHTML.includes('REPLAY SCORE ONLY'));
 await click('leaderboard');assert.match(app.innerHTML,/Test Player/);assert.match(app.innerHTML,/leader-score">70/);
 context.CouncilAPI.adminReviews=async()=>[{id:'review-fixture',prompt:'Review fixture prompt',rawAnswer:'fixture0',canonical:'fixture0',username:'Test Player',points:10,reviewStatus:'accepted',answers:[{id:pack.questions[0].answers[0].id,canonical:'fixture0',tier:'dino',points:10}]}];
 await click('admin');assert.match(app.innerHTML,/ANSWER HISTORY/);assert.match(app.innerHTML,/Nothing needs approval/);assert.match(app.innerHTML,/Review fixture prompt/);await click('review-filter','unrecognized');assert.match(app.innerHTML,/No unrecognized answers recorded/);assert.ok(!app.innerHTML.includes('Review fixture prompt'));
@@ -66,7 +66,7 @@ test('mobile viewport follows keyboard size and typo feedback preserves the exis
  const before=app.innerHTML,feedback={textContent:''},slot={innerHTML:''},form={classList:{toggle(){}},querySelector:s=>s==='.burrow-feedback'?feedback:s==='.answer-suggestion-slot'?slot:null,scrollIntoView(){}};
  const originalQuery=document.querySelector;document.querySelector=s=>s==='[data-form="answer"]'?form:null;
  const first=await context.CouncilAPI.getState((await context.CouncilAPI.listPacks()).find(p=>p.id===pack.id).myAttempt.id);
- await submit('answer',{answer:'MoblieAnswer'});assert.equal(app.innerHTML,before);assert.match(feedback.textContent,/Did you mean “MobileAnswer”/);assert.match(slot.innerHTML,/YES, USE IT/);assert.equal((await context.CouncilAPI.getState(first.id)).deadline,first.deadline);
+ await submit('answer',{answer:'MoblieAnswer'});assert.equal(app.innerHTML,before);assert.match(feedback.textContent,/Did you mean “MobileAnswer”/);assert.match(slot.innerHTML,/YES, USE MobileAnswer/);assert.equal((await context.CouncilAPI.getState(first.id)).deadline,first.deadline);
  context.visualViewport.height=390;context.visualViewport.offsetTop=12;for(const fn of viewportEvents.resize)fn();assert.equal(viewportStyles.get('--game-viewport-height'),'390px');assert.equal(viewportStyles.get('--game-viewport-top'),'12px');assert.ok(keyboardClasses.has('keyboard-open'));
  context.innerHeight=390;document.activeElement={tagName:'INPUT'};for(const fn of viewportEvents.resize)fn();assert.ok(keyboardClasses.has('keyboard-open'));context.innerHeight=844;document.activeElement=null;
  await click('dismiss-suggestion');assert.equal(slot.innerHTML,'');assert.equal(app.innerHTML,before);
@@ -79,4 +79,23 @@ test('readable pack paste fills all seven questions into a new private draft',as
  const text='Pack: Readable UI fixture\n\n'+Array.from({length:7},(_,i)=>`Q${i+1}: Supplied UI prompt ${i+1}\nSupplied UI answer ${i+1} | ${i===0?100:10} | Alternate ${i+1} | ${i===0?'Supplied UI subtitle':''}`).join('\n\n');
  await submit('bulk-pack',{title:'Fallback',text});assert.match(app.innerHTML,/Readable UI fixture/);assert.match(app.innerHTML,/Supplied UI prompt 1/);assert.match(app.innerHTML,/Supplied UI answer 1/);assert.match(app.innerHTML,/Supplied UI subtitle/);assert.match(app.innerHTML,/Filled 7 questions and 7 accepted answers/);
  await click('save-draft');const pack=(await context.CouncilAPI.adminList()).find(p=>p.title==='Readable UI fixture');assert.ok(pack);assert.equal(pack.published,false);assert.equal((await context.CouncilAPI.adminGet(pack.id)).questions.length,7);assert.ok(!(await context.CouncilAPI.listPacks()).some(p=>p.id===pack.id));
+});
+
+test('Game Master score deletion can be cancelled, removes standings on confirmation, and retains history',async()=>{
+ await click('admin');assert.match(app.innerHTML,/PLAYER SCORES/);assert.match(app.innerHTML,/data-action="delete-score"/);
+ const score=(await context.CouncilAPI.adminScores()).find(s=>s.isOfficial&&!s.removed);assert.ok(score);
+ context.confirm=()=>false;await click('delete-score',score.attemptId);assert.equal((await context.CouncilAPI.adminScores()).find(s=>s.attemptId===score.attemptId).removed,false);
+ context.confirm=()=>true;await click('delete-score',score.attemptId);assert.match(app.innerHTML,/Score removed from the leaderboards/);assert.match(app.innerHTML,/REMOVED/);
+ const saved=(await context.CouncilAPI.adminScores()).find(s=>s.attemptId===score.attemptId);assert.equal(saved.removed,true);assert.equal((await context.CouncilAPI.getResults(score.attemptId)).scoreStatus,'removed');
+});
+
+test('rerendering the same expedition retains the scene DOM instead of resetting its camera',async()=>{
+ const pack=await context.CouncilAPI.adminSave({title:'Scene persistence fixture',published:true,questions:Array.from({length:7},(_,i)=>({prompt:'Scene question '+i,answers:[{canonical:'SceneAnswer',tier:'dino',aliases:[],explanation:''}]}))});
+ await click('packs');await click('play',pack.id);const state=(await context.CouncilAPI.listPacks()).find(p=>p.id===pack.id).myAttempt;
+ let rendered=false,reused=false,destroyed=0,html=app.innerHTML;const originalQuery=app.querySelector,originalDestroy=context.CouncilArcade.destroy;
+ const previous={dataset:{attemptId:state.id}},fresh={replaceWith(node){reused=node===previous;}};
+ Object.defineProperty(app,'innerHTML',{configurable:true,get:()=>html,set:value=>{html=value;rendered=true;}});
+ app.querySelector=selector=>selector==='.arcade-scene'?(rendered?fresh:previous):originalQuery(selector);context.CouncilArcade.destroy=()=>destroyed++;
+ await click('sound');assert.equal(reused,true);assert.equal(destroyed,0);
+ app.querySelector=originalQuery;context.CouncilArcade.destroy=originalDestroy;Object.defineProperty(app,'innerHTML',{configurable:true,writable:true,value:html});
 });
